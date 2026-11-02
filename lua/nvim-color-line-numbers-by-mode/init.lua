@@ -48,8 +48,12 @@ function M.setup(opts)
             apply()
         end,
     })
-    theme_line_nr = vim.api.nvim_get_hl(0, { name = "LineNr", link = false })
-    apply()
+    -- Deferred so themes that load after plugins (e.g. NvChad's base46) don't
+    -- overwrite the first colour.
+    vim.schedule(function()
+        theme_line_nr = vim.api.nvim_get_hl(0, { name = "LineNr", link = false })
+        apply()
+    end)
 end
 
 return M
