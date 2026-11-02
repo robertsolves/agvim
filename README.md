@@ -9,11 +9,21 @@ A plugin for NeoVim to color the line numbers based on the current mode (Normal,
 ```lua
 return {
   {
-    "DevCetra/nvim-color-line-numbers-by-mode",
+    "dev-cetera/nvim-color-line-numbers-by-mode",
     lazy = false, --load during startup
     config = function()
       require("nvim-color-line-numbers-by-mode").setup()
     end,
   },
 }
+```
+
+## Options
+
+Pass your own colours to `setup`. Visual covers `v`, `V` and Ctrl-V. A mode set to `nil` keeps the theme's colour.
+
+```lua
+require("nvim-color-line-numbers-by-mode").setup({
+  colors = { n = "#44a8e5", i = "#c177e5", v = "#88deff", R = "#e5a844" },
+})
 ```
