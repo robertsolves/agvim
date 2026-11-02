@@ -2,7 +2,8 @@ return {
   {
     -- Claude Code's IDE integration (same protocol as the VS Code extension):
     -- Claude sees your selection and open file, and shows its edits as diffs here.
-    -- Works with Claude run from <leader>ac or in another tmux pane (`claude`, then /ide).
+    -- <leader>tc runs Claude in the bottom panel already connected; <leader>ac opens
+    -- it on the right instead. In another tmux pane, run `claude` then /ide.
     "coder/claudecode.nvim",
     lazy = false,
     opts = {

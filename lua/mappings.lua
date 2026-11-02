@@ -134,3 +134,23 @@ map("n", "[h", "<cmd>Gitsigns prev_hunk<CR>", with_desc "Previous hunk")
 map("n", "<Leader>gg", function()
   require("nvchad.term").toggle { pos = "float", id = "lazygit", cmd = "lazygit" }
 end, with_desc "lazygit")
+
+--------------------------------------------------------------------------------
+-- Bottom terminal panel and coding agents (configs/terminals.lua)
+--------------------------------------------------------------------------------
+
+local terminals = require "configs.terminals"
+
+-- Ctrl-` like VS Code; <leader>tt does the same.
+map({ "n", "t" }, "<C-`>", function()
+  terminals.toggle "shell"
+end, with_desc "Toggle bottom terminal")
+map("n", "<Leader>tt", function()
+  terminals.toggle "shell"
+end, with_desc "Toggle bottom terminal")
+
+for _, agent in ipairs(terminals.agents) do
+  map({ "n", "t" }, "<Leader>t" .. agent.key, function()
+    terminals.toggle(agent.name, agent.cmd)
+  end, with_desc("Toggle " .. agent.name))
+end

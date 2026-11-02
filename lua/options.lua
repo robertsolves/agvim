@@ -12,6 +12,7 @@ o.signcolumn = "yes" -- Stop the text jumping when diagnostics appear
 o.scrolloff = 8
 o.updatetime = 250
 o.confirm = true -- Ask instead of failing on :q with unsaved changes
+o.scrollback = 100000 -- Long terminal history for agent sessions
 
 -- Colour swatches next to colour values (Flutter Colors, CSS), from the LSP.
 vim.lsp.document_color.enable(true)
@@ -26,6 +27,17 @@ vim.filetype.add {
     tf = "terraform",
     tfvars = "terraform-vars",
     env = "dotenv",
+    -- iOS / macOS (Flutter ios/ and macos/ folders)
+    m = "objc",
+    mm = "objcpp",
+    plist = "xml",
+    storyboard = "xml",
+    xib = "xml",
+    entitlements = "xml",
+    xcscheme = "xml",
+    xcworkspacedata = "xml",
+    xcconfig = "xcconfig",
+    podspec = "ruby",
   },
   filename = {
     [".env"] = "dotenv",
@@ -35,9 +47,12 @@ vim.filetype.add {
     ["%.env%.[%w_.-]+"] = "dotenv",
     ["docker%-compose.*%.ya?ml"] = "yaml.docker-compose",
     ["compose%.ya?ml"] = "yaml.docker-compose",
+    [".*/%.vscode/.*%.json"] = "jsonc", -- VS Code allows comments and trailing commas
   },
 }
 
 -- Highlight these with a related language's parser.
 vim.treesitter.language.register("bash", "dotenv")
 vim.treesitter.language.register("terraform", "terraform-vars")
+vim.treesitter.language.register("xml", "svg")
+vim.treesitter.language.register("properties", { "jproperties", "xcconfig" })

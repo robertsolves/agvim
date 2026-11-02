@@ -17,6 +17,10 @@ local mason_packages = {
   "codelldb",
   "wgsl-analyzer",
   "slint-lsp",
+  -- Flutter's android/ (Kotlin, Gradle .kts, XML) and windows/linux runners (CMake)
+  "kotlin-lsp",
+  "lemminx",
+  "neocmakelsp",
   -- Google Cloud / AWS
   "terraform-ls",
   "tflint",

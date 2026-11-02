@@ -40,11 +40,25 @@ local servers = {
   vtsls = {},
   eslint = {},
 
-  -- Swift (SwiftPM projects). Ships with Xcode.
+  -- Swift and Objective-C. Ships with Xcode. SwiftPM projects work as they are;
+  -- for a Flutter ios/ folder run :XcodeBuildServer once so it knows the Xcode
+  -- project (otherwise "No such module 'Flutter'").
   sourcekit = {
     cmd = { "xcrun", "sourcekit-lsp" },
-    filetypes = { "swift" },
+    filetypes = { "swift", "objc", "objcpp" },
   },
+
+  -- C/C++ in plugins and the Windows/Linux runners. Xcode's clangd.
+  clangd = { filetypes = { "c", "cpp" } },
+
+  -- Flutter's android/ folder: Kotlin and Gradle .kts (JetBrains' server),
+  -- AndroidManifest and other XML, plus SVG validation.
+  kotlin_lsp = {},
+  lemminx = {
+    -- Android XML has no schema; don't warn about that on every file.
+    settings = { xml = { validation = { noGrammar = "ignore" } } },
+  },
+  neocmake = {},
 
   -- Slint UI + Bevy shaders.
   slint_lsp = {},
@@ -60,6 +74,11 @@ local servers = {
   jsonls = {
     before_init = function(_, config)
       config.settings.json.schemas = require("schemastore").json.schemas()
+      -- VS Code's own JSONC files allow trailing commas.
+      table.insert(config.settings.json.schemas, {
+        fileMatch = { ".vscode/*.json", "*.code-workspace" },
+        schema = { allowTrailingCommas = true },
+      })
     end,
     settings = { json = { validate = { enable = true } } },
   },
@@ -107,3 +126,33 @@ for name, config in pairs(servers) do
   vim.lsp.config(name, config)
   vim.lsp.enable(name)
 end
+
+-- Points sourcekit-lsp at the Xcode workspace of the ios/ or macos/ folder you're
+-- in (needs `brew install xcode-build-server` and one Xcode or `flutter build ios`
+-- build). Writes buildServer.json there; add it to the project's git ignores.
+vim.api.nvim_create_user_command("XcodeBuildServer", function()
+  local workspace = vim.fs.find(function(name)
+    return name:match "%.xcworkspace$" and name ~= "project.xcworkspace"
+  end, { upward = true, path = vim.fn.expand "%:p:h", type = "directory" })[1]
+  if not workspace then
+    vim.notify("No .xcworkspace above this file", vim.log.levels.ERROR)
+    return
+  end
+  local dir = vim.fs.dirname(workspace)
+  local result = vim
+    .system({
+      "xcode-build-server",
+      "config",
+      "-workspace",
+      vim.fs.basename(workspace),
+      "-scheme",
+      "Runner",
+    }, { cwd = dir, text = true })
+    :wait()
+  if result.code ~= 0 then
+    vim.notify(result.stderr, vim.log.levels.ERROR)
+    return
+  end
+  vim.notify("Wrote " .. dir .. "/buildServer.json; restarting sourcekit")
+  vim.cmd "lsp restart sourcekit"
+end, { desc = "Configure sourcekit-lsp for this Xcode workspace (scheme Runner)" })
