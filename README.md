@@ -79,3 +79,13 @@ Opening a `.png`, `.jpg`, `.gif` or `.webp` shows the picture (kitty graphics; w
 ## Flutter iOS folder
 
 Swift and Objective-C in `ios/` need to know the Xcode project. Once per app: build it once (`fvm flutter build ios --debug --no-codesign` or in Xcode), open a file in `ios/`, run `:XcodeBuildServer`. It writes `ios/buildServer.json`; keep that out of git.
+
+## Opening projects
+
+Each project gets a tmux session: window 1 runs Neovim, window 2 a shell (Alt-1 / Alt-2). Opening a project again returns to its running session.
+
+- Finder: right-click a folder → Quick Actions → **Open in Neovim** (opens kitty). Source: `~/Library/Services/Open in Neovim.workflow`.
+- Terminal: `t` opens the folder you're in (`t <dir>` another one); `p` fuzzy-picks from every project under `~/Projects`, `~/Desktop` and `~/reportaday`.
+- Inside tmux: prefix (Ctrl-Space) then `P` picks a project in a popup and switches to it; prefix `s` lists open sessions.
+
+The scripts are `~/.local/bin/{open-project,t,p}`.
