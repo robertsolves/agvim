@@ -129,6 +129,9 @@ map("n", "<Leader>gh", "<cmd>Gitsigns preview_hunk<CR>", with_desc "Preview hunk
 map("n", "<Leader>gb", "<cmd>Gitsigns blame_line<CR>", with_desc "Blame line")
 map("n", "]h", "<cmd>Gitsigns next_hunk<CR>", with_desc "Next hunk")
 map("n", "[h", "<cmd>Gitsigns prev_hunk<CR>", with_desc "Previous hunk")
+map("n", "<Leader>gs", "<cmd>Gitsigns stage_hunk<CR>", with_desc "Stage hunk")
+map("n", "<Leader>gu", "<cmd>Gitsigns reset_hunk<CR>", with_desc "Undo hunk (discard change)")
+map("n", "<Leader>gw", "<cmd>Gitsigns toggle_word_diff<CR>", with_desc "Toggle word-level diff")
 
 -- lazygit in a floating terminal.
 map("n", "<Leader>gg", function()
@@ -140,17 +143,31 @@ end, with_desc "lazygit")
 --------------------------------------------------------------------------------
 
 local terminals = require "configs.terminals"
-
--- Ctrl-` like VS Code; <leader>tt does the same.
-map({ "n", "t" }, "<C-`>", function()
-  terminals.toggle "shell"
-end, with_desc "Toggle bottom terminal")
-map("n", "<Leader>tt", function()
-  terminals.toggle "shell"
-end, with_desc "Toggle bottom terminal")
-
-for _, agent in ipairs(terminals.agents) do
-  map({ "n", "t" }, "<Leader>t" .. agent.key, function()
-    terminals.toggle(agent.name, agent.cmd)
-  end, with_desc("Toggle " .. agent.name))
+local function term(fn, ...)
+  local args = { ... }
+  return function()
+    terminals[fn](unpack(args))
+  end
 end
+
+-- Show / hide the panel. Ctrl-` like VS Code; <leader>tt does the same.
+map({ "n", "t" }, "<C-`>", term "toggle", with_desc "Terminal panel: show / hide")
+map("n", "<Leader>tt", term "toggle", with_desc "Terminal panel: show / hide")
+
+-- New shell, side-by-side shell, next / previous, pick, rename.
+map({ "n", "t" }, "<A-t>", term "new", with_desc "Terminal: new shell")
+map("n", "<Leader>tn", term "new", with_desc "Terminal: new shell")
+map("n", "<Leader>ts", term "split", with_desc "Terminal: new shell beside")
+map({ "n", "t" }, "<A-.>", term("cycle", 1), with_desc "Terminal: next")
+map({ "n", "t" }, "<A-,>", term("cycle", -1), with_desc "Terminal: previous")
+map("n", "<Leader>tl", term "pick", with_desc "Terminal: pick from list")
+map("n", "<Leader>tr", term "rename", with_desc "Terminal: rename")
+
+-- Agents: <leader>t + key opens a new one as a tab, <leader>T + key beside the current one.
+for _, agent in ipairs(terminals.agents) do
+  map("n", "<Leader>t" .. agent.key, term("new", agent.name, agent.cmd), with_desc("New " .. agent.name))
+  map("n", "<Leader>T" .. agent.key, term("split", agent.name, agent.cmd), with_desc("New " .. agent.name .. " beside"))
+end
+
+-- Alt-k jumps from a terminal up to the code (Ctrl-w then Ctrl-k also works).
+map("t", "<A-k>", "<C-\\><C-n><C-w>k", with_desc "Terminal: go to code above")

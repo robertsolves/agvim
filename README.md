@@ -4,7 +4,7 @@ NvChad v2.5 on Neovim 0.12, set up for Flutter/Dart (plus the iOS and Android fo
 
 ## How it's meant to be used
 
-Code on top, agents below. `Space tc` opens Claude in a panel along the bottom (already connected, so it sees your selection and shows edits as diffs: `Space aa` / `Space ad`). `Space tx` Codex, `Space to` OpenCode, `Space tk` Kilo, `Space tg` Gemini, `Space tt` (or Ctrl-`) a plain shell. Each toggles and keeps running while hidden. Files an agent changes reload above within a second. In a terminal, `Ctrl-w` (or `Ctrl-x`) returns to normal mode, then `Ctrl-k` moves up to the code.
+Code on top, terminals below. Opening a project starts a shell in a panel along the bottom; add as many shells and agents as you like, as tabs or side by side. `Space tc` opens Claude there (already connected, so it sees your selection and shows edits as diffs: `Space aa` / `Space ad`). `Space tx` Codex, `Space to` OpenCode, `Space tk` Kilo, `Space tg` Gemini, `Space tt` (or Ctrl-`) a plain shell. Every press starts another one; all keep running while the panel is hidden. Files an agent changes reload above within a second. In a terminal, `Ctrl-w` (or `Ctrl-x`) returns to normal mode, then `Ctrl-k` moves up to the code.
 
 ## Setup
 
@@ -54,9 +54,15 @@ Leader is Space. `Space` then wait shows every key (which-key). `Space ch` opens
 | `Space Rr` `Rd` `Re` `Rm` `dt` | Rust: run, debug, explain error, expand macro, tests |
 | `Space sp` | Slint live preview |
 | `Space ac` `as` `ab` `aa` `ad` | Claude Code: open, send selection, add file, accept/reject diff |
+| `Space gv` / `Space gV` | all git changes, side by side (like VS Code's Source Control) / close |
+| `Space gf` / `Space gF` | this file's / the project's git history |
 | `Space gg` / `Space gh` / `Space gb` | lazygit / preview hunk / blame line |
-| `Space tt` or Ctrl-` | bottom terminal |
-| `Space tc` `tx` `to` `tk` `tg` | Claude, Codex, OpenCode, Kilo, Gemini in the bottom panel |
+| `]h` `[h`, `Space gs` / `Space gu` / `Space gw` | next/previous change, stage / undo change / word diff |
+| `Space tt` or Ctrl-` | show / hide the bottom terminal panel (opens by itself with a project) |
+| `Space tn` or Alt-t / `Space ts` | new shell as a tab / beside the current one |
+| Alt-. / Alt-, / `Space tl` / `Space tr` | next / previous / pick / rename terminal |
+| `Space tc` `tx` `to` `tk` `tg` | new Claude, Codex, OpenCode, Kilo, Gemini tab (`Space T` + key: beside) |
+| Alt-k | from a terminal up to the code |
 | `Space pi` | SVG rendered in a float (first frame), or the image under the cursor |
 | `Space pv` / `Space pc` | live browser preview of SVG (animated SMIL plays), HTML, Markdown / stop |
 | `Alt-i` / `Alt-h` / `Alt-v` | floating / horizontal / vertical terminal |

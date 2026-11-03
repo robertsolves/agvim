@@ -117,4 +117,19 @@ return {
   },
 
   { "tpope/vim-fugitive", cmd = { "Git", "G", "Gdiffsplit", "Gblame" } },
+
+  -- VS Code's Source Control view: every changed file in a list, side-by-side
+  -- diffs, stage/unstage with `-`, and file history. Good for reviewing what an
+  -- agent changed.
+  {
+    "sindrets/diffview.nvim",
+    cmd = { "DiffviewOpen", "DiffviewClose", "DiffviewFileHistory" },
+    keys = {
+      { "<leader>gv", "<cmd>DiffviewOpen<cr>", desc = "Git: view all changes" },
+      { "<leader>gV", "<cmd>DiffviewClose<cr>", desc = "Git: close changes view" },
+      { "<leader>gf", "<cmd>DiffviewFileHistory %<cr>", desc = "Git: this file's history" },
+      { "<leader>gF", "<cmd>DiffviewFileHistory<cr>", desc = "Git: project history" },
+    },
+    opts = {},
+  },
 }

@@ -51,3 +51,6 @@ autocmd({ "BufEnter", "WinEnter" }, {
     vim.cmd "startinsert"
   end,
 })
+
+-- The bottom terminal panel opens itself when a project folder is opened.
+require "configs.terminals"
