@@ -4,7 +4,7 @@ NvChad v2.5 on Neovim 0.12, set up for Flutter/Dart (plus the iOS and Android fo
 
 ## How it's meant to be used
 
-Code on top, terminals below. Opening a project starts a shell in a panel along the bottom; add as many shells and agents as you like, as tabs or side by side. `Space tc` opens Claude there (already connected, so it sees your selection and shows edits as diffs: `Space aa` / `Space ad`). `Space tx` Codex, `Space to` OpenCode, `Space tk` Kilo, `Space tg` Gemini, `Space tt` (or Ctrl-`) a plain shell. Every press starts another one; all keep running while the panel is hidden. Files an agent changes reload above within a second. In a terminal, `Ctrl-w` (or `Ctrl-x`) returns to normal mode, then `Ctrl-k` moves up to the code.
+Code on top, terminals below. Opening a project starts a shell in a panel along the bottom; add as many shells and agents as you like, as tabs or side by side. `Space tc` opens Claude there (already connected, so it sees your selection and shows edits as diffs: `Space aa` / `Space ad`). `Space tx` Codex, `Space to` OpenCode, `Space tk` Kilo, `Space tg` Gemini, `Space tt` (or Ctrl-`) a plain shell. Every press starts another one; all keep running while the panel is hidden. Files an agent changes reload above within a second; Alt-g shows everything it changed as side-by-side diffs (Alt-g again to go back). In a terminal, `Ctrl-w` (or `Ctrl-x`) returns to normal mode, then `Ctrl-k` moves up to the code.
 
 ## Setup
 
@@ -54,7 +54,8 @@ Leader is Space. `Space` then wait shows every key (which-key). `Space ch` opens
 | `Space Rr` `Rd` `Re` `Rm` `dt` | Rust: run, debug, explain error, expand macro, tests |
 | `Space sp` | Slint live preview |
 | `Space ac` `as` `ab` `aa` `ad` | Claude Code: open, send selection, add file, accept/reject diff |
-| `Space gv` / `Space gV` | all git changes, side by side (like VS Code's Source Control) / close |
+| Alt-g (anywhere, even in an agent terminal) | show / hide all git changes, side by side (like VS Code's Source Control) |
+| `Space gv` / `Space gV` | open / close the same changes view |
 | `Space gf` / `Space gF` | this file's / the project's git history |
 | `Space gg` / `Space gh` / `Space gb` | lazygit / preview hunk / blame line |
 | `]h` `[h`, `Space gs` / `Space gu` / `Space gw` | next/previous change, stage / undo change / word diff |

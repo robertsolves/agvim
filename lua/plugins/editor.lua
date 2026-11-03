@@ -125,6 +125,20 @@ return {
     "sindrets/diffview.nvim",
     cmd = { "DiffviewOpen", "DiffviewClose", "DiffviewFileHistory" },
     keys = {
+      -- Alt-g opens / closes it from anywhere, agent terminals included.
+      {
+        "<A-g>",
+        function()
+          if require("diffview.lib").get_current_view() then
+            vim.cmd "DiffviewClose"
+          else
+            vim.cmd "stopinsert"
+            vim.cmd "DiffviewOpen"
+          end
+        end,
+        mode = { "n", "t" },
+        desc = "Git: show / hide all changes",
+      },
       { "<leader>gv", "<cmd>DiffviewOpen<cr>", desc = "Git: view all changes" },
       { "<leader>gV", "<cmd>DiffviewClose<cr>", desc = "Git: close changes view" },
       { "<leader>gf", "<cmd>DiffviewFileHistory %<cr>", desc = "Git: this file's history" },
