@@ -35,6 +35,9 @@ return {
     init = function()
       vim.api.nvim_create_autocmd("VimEnter", {
         callback = function(data)
+          if vim.g.diff_only then
+            return
+          end
           local opened_file = vim.fn.filereadable(data.file) == 1
           require("nvim-tree.api").tree.open()
           if opened_file then
@@ -144,6 +147,15 @@ return {
       { "<leader>gf", "<cmd>DiffviewFileHistory %<cr>", desc = "Git: this file's history" },
       { "<leader>gF", "<cmd>DiffviewFileHistory<cr>", desc = "Git: project history" },
     },
-    opts = {},
+    opts = {
+      hooks = {
+        -- `gd` starts Neovim just for the changes view; closing it quits.
+        view_closed = function()
+          if vim.g.diff_only then
+            vim.cmd "qall"
+          end
+        end,
+      },
+    },
   },
 }

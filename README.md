@@ -55,6 +55,7 @@ Leader is Space. `Space` then wait shows every key (which-key). `Space ch` opens
 | `Space sp` | Slint live preview |
 | `Space ac` `as` `ab` `aa` `ad` | Claude Code: open, send selection, add file, accept/reject diff |
 | Alt-g (anywhere, even in an agent terminal) | show / hide all git changes, side by side (like VS Code's Source Control) |
+| `gd` in any terminal (or tmux prefix g) | the same view on its own, for whatever repo you are in; `gd main` compares with a branch; `q` quits |
 | `Space gv` / `Space gV` | open / close the same changes view |
 | `Space gf` / `Space gF` | this file's / the project's git history |
 | `Space gg` / `Space gh` / `Space gb` | lazygit / preview hunk / blame line |
