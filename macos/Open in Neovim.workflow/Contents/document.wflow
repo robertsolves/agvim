@@ -59,11 +59,11 @@
 				<key>ActionParameters</key>
 				<dict>
 					<key>COMMAND_STRING</key>
-					<string># Opens each selected folder's tmux workspace (Neovim + shell) in kitty.
-# zsh -lic loads your shell setup so nvim, flutter, nvm etc. are on PATH.
+					<string># Opens each selected folder as a project in the tmux you have open, or in a new
+# kitty window when none is (open-project --window). zsh -lic loads your shell
+# setup so tmux, nvim, flutter, nvm etc. are on PATH.
 while IFS= read -r folder; do
-  /Applications/kitty.app/Contents/MacOS/kitty --single-instance --directory "$folder" \
-    /bin/zsh -lic '"$HOME/.local/bin/open-project" "$1"' open-project "$folder" &gt;/dev/null 2&gt;&amp;1 &amp;
+  /bin/zsh -lic '"$HOME/.local/bin/open-project" --window "$1"' open-project "$folder" &gt;/dev/null 2&gt;&amp;1 &amp;
 done</string>
 					<key>CheckedForUserDefaultShell</key>
 					<true/>

@@ -139,7 +139,8 @@ map("n", "<Leader>gg", function()
 end, with_desc "lazygit")
 
 --------------------------------------------------------------------------------
--- Bottom terminal panel and coding agents (configs/terminals.lua)
+-- Shell and agent tabs (configs/terminals.lua): full-screen tmux tabs along the
+-- bottom. Alt-t, Alt-. / Alt-, are tmux keys (tmux.conf).
 --------------------------------------------------------------------------------
 
 local terminals = require "configs.terminals"
@@ -150,24 +151,11 @@ local function term(fn, ...)
   end
 end
 
--- Show / hide the panel. Ctrl-` like VS Code; <leader>tt does the same.
-map({ "n", "t" }, "<C-`>", term "toggle", with_desc "Terminal panel: show / hide")
-map("n", "<Leader>tt", term "toggle", with_desc "Terminal panel: show / hide")
+-- New shell tab, rename the current tab.
+map("n", "<Leader>tn", term "new", with_desc "Terminal: new shell tab")
+map("n", "<Leader>tr", term "rename", with_desc "Terminal: rename tab")
 
--- New shell, side-by-side shell, next / previous, pick, rename.
-map({ "n", "t" }, "<A-t>", term "new", with_desc "Terminal: new shell")
-map("n", "<Leader>tn", term "new", with_desc "Terminal: new shell")
-map("n", "<Leader>ts", term "split", with_desc "Terminal: new shell beside")
-map({ "n", "t" }, "<A-.>", term("cycle", 1), with_desc "Terminal: next")
-map({ "n", "t" }, "<A-,>", term("cycle", -1), with_desc "Terminal: previous")
-map("n", "<Leader>tl", term "pick", with_desc "Terminal: pick from list")
-map("n", "<Leader>tr", term "rename", with_desc "Terminal: rename")
-
--- Agents: <leader>t + key opens a new one as a tab, <leader>T + key beside the current one.
+-- Agents: <leader>t + key opens a new one as a tab.
 for _, agent in ipairs(terminals.agents) do
   map("n", "<Leader>t" .. agent.key, term("new", agent.name, agent.cmd), with_desc("New " .. agent.name))
-  map("n", "<Leader>T" .. agent.key, term("split", agent.name, agent.cmd), with_desc("New " .. agent.name .. " beside"))
 end
-
--- Alt-k jumps from a terminal up to the code (Ctrl-w then Ctrl-k also works).
-map("t", "<A-k>", "<C-\\><C-n><C-w>k", with_desc "Terminal: go to code above")

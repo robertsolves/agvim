@@ -1,10 +1,10 @@
 # Neovim config (NvChad, macOS)
 
-NvChad v2.5 on Neovim 0.12, set up for Flutter/Dart (plus the iOS and Android folders: Swift, Objective-C, Kotlin, Gradle, XML, Podfile), Rust (Bevy, Slint), Swift, Python, TypeScript/JavaScript, Terraform (Google Cloud), Docker, YAML/JSON/TOML (GitHub Actions, CloudFormation), with image and SVG/HTML previews and coding agents in a bottom panel.
+NvChad v2.5 on Neovim 0.12, set up for Flutter/Dart (plus the iOS and Android folders: Swift, Objective-C, Kotlin, Gradle, XML, Podfile), Rust (Bevy, Slint), Swift, Python, TypeScript/JavaScript, Terraform (Google Cloud), Docker, YAML/JSON/TOML (GitHub Actions, CloudFormation), with image and SVG/HTML previews and coding agents in tabs of their own.
 
 ## How it's meant to be used
 
-Code on top, terminals below. Opening a project starts a shell in a panel along the bottom; add as many shells and agents as you like, as tabs or side by side. `Space tc` opens Claude there (already connected, so it sees your selection and shows edits as diffs: `Space aa` / `Space ad`). `Space tx` Codex, `Space to` OpenCode, `Space tk` Kilo, `Space tg` Gemini, `Space tt` (or Ctrl-`) a plain shell. Every press starts another one; all keep running while the panel is hidden. Files an agent changes reload above within a second; Alt-g shows everything it changed as side-by-side diffs (Alt-g again to go back). In a terminal, `Ctrl-w` (or `Ctrl-x`) returns to normal mode, then `Ctrl-k` moves up to the code.
+Each project is a kitty tab along the top. Inside it, the tabs along the bottom are full screen: Neovim, then a shell, and as many more shells and agents as you like (`+`, Alt-t or Cmd-T for a shell). They're tmux windows, so they're saved and restored with the project. `Space tc` opens Claude in a new tab (already connected, so it sees your selection and shows edits as diffs: `Space aa` / `Space ad`). `Space tx` Codex, `Space to` OpenCode, `Space tk` Kilo, `Space tg` Gemini, `Space tn` a plain shell. Every press starts another one; all keep running in the background. Files an agent changes reload in Neovim within a second; Alt-g shows everything it changed as side-by-side diffs (Alt-g again to go back). Click a tab or press Alt-1 to get back to Neovim.
 
 ## Setup
 
@@ -19,7 +19,7 @@ Run `install.sh` at the top of this repo (see the repo's README). It links this 
 | Formatting | `lua/configs/conform.lua` |
 | Debuggers | `lua/configs/dap.lua` |
 | Keys | `lua/mappings.lua`, plus `after/ftplugin/{dart,rust,slint}.lua` |
-| Terminal panel | `lua/configs/terminals.lua` |
+| Shell and agent tabs | `lua/configs/terminals.lua` (keys), `tmux/tmux.conf` and `bin/tab` at the top of the repo |
 | Treesitter parsers | `lua/configs/treesitter_parsers.lua` |
 | Line numbers coloured by mode | `local-plugins/nvim-color-line-numbers-by-mode` |
 
@@ -52,11 +52,10 @@ Leader is Space. `Space` then wait shows every key (which-key). `Space ch` opens
 | `Space gf` / `Space gF` | this file's / the project's git history |
 | `Space gg` / `Space gh` / `Space gb` | lazygit / preview hunk / blame line |
 | `]h` `[h`, `Space gs` / `Space gu` / `Space gw` | next/previous change, stage / undo change / word diff |
-| `Space tt` or Ctrl-` | show / hide the bottom terminal panel (opens by itself with a project) |
-| `Space tn` or Alt-t / `Space ts` | new shell as a tab / beside the current one |
+| `Space tn`, Alt-t, Cmd-T or `+` | new full-screen shell tab |
 | Alt-. / Alt-, / `Space tl` / `Space tr` | next / previous / pick / rename terminal |
-| `Space tc` `tx` `to` `tk` `tg` | new Claude, Codex, OpenCode, Kilo, Gemini tab (`Space T` + key: beside) |
-| Alt-k | from a terminal up to the code |
+| click a tab (top: projects, bottom: this project's tabs) | switch to it; `×` on a bottom tab closes that terminal, `× project` closes the project and all its tabs (both ask), `+ project` opens one; right-click a bottom tab to rename it |
+| `Space tc` `tx` `to` `tk` `tg` | new Claude, Codex, OpenCode, Kilo, Gemini tab |
 | `Space pi` | SVG rendered in a float (first frame), or the image under the cursor |
 | `Space pv` / `Space pc` | live browser preview of SVG (animated SMIL plays), HTML, Markdown / stop |
 | `Alt-i` / `Alt-h` / `Alt-v` | floating / horizontal / vertical terminal |
@@ -82,9 +81,9 @@ Swift and Objective-C in `ios/` need to know the Xcode project. Once per app: bu
 
 ## Opening projects
 
-Each project gets a tmux session: window 1 runs Neovim, window 2 a shell (Alt-1 / Alt-2). Opening a project again returns to its running session.
+Each project gets a tmux session, all in one tmux, shown in a kitty tab of its own: window 1 runs Neovim, window 2 "shell 1" (Alt-1 / Alt-2). Every terminal starts in the project folder. Opening a project again returns to its running session. tmux saves every project every 5 minutes and restores them all when it next starts, agents continuing their last conversation; prefix Ctrl-s / Ctrl-r save / restore by hand.
 
-- Finder: right-click a folder → Quick Actions → **Open in Neovim** (opens kitty). Source: `macos/Open in Neovim.workflow` in this repo.
+- Finder: right-click a folder → Quick Actions → **Open in Neovim**, or drop a folder on kitty's Dock icon. With tmux already open in kitty, the project joins it; otherwise a kitty window opens. Source: `macos/Open in Neovim.workflow` in this repo.
 - Terminal: `t` opens the folder you're in (`t <dir>` another one); `p` fuzzy-picks from every project under `~/Projects`, `~/Developer`, `~/code` and `~/Desktop` (or the folders listed one per line in `~/.config/agent-workspace/roots`).
 - Inside tmux: prefix (Ctrl-Space) then `P` picks a project in a popup and switches to it; prefix `s` lists open sessions.
 

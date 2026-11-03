@@ -23,8 +23,8 @@ autocmd("TextYankPost", {
   end,
 })
 
--- Agents in the bottom panel edit files on disk; reload them in the code windows
--- above. Unchanged buffers reload silently; a buffer with unsaved edits asks.
+-- Agents in the other tabs edit files on disk; reload them in the code windows.
+-- Unchanged buffers reload silently; a buffer with unsaved edits asks.
 vim.o.autoread = true
 autocmd({ "FocusGained", "BufEnter", "CursorHold", "TermLeave", "TermClose" }, {
   callback = function()
@@ -51,6 +51,3 @@ autocmd({ "BufEnter", "WinEnter" }, {
     vim.cmd "startinsert"
   end,
 })
-
--- The bottom terminal panel opens itself when a project folder is opened.
-require "configs.terminals"

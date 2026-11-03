@@ -104,16 +104,18 @@ fi
 
 step "kitty"
 link "$REPO/kitty/agent-workspace.conf" "$HOME/.config/kitty/agent-workspace.conf"
+link "$REPO/kitty/launch-actions.conf" "$HOME/.config/kitty/launch-actions.conf" # folders dropped on the Dock icon
+link "$REPO/kitty/startup-session.conf" "$HOME/.config/kitty/startup-session.conf" # a tab per project on start
 kitty_conf=~/.config/kitty/kitty.conf
 touch "$kitty_conf"
 if ! grep -qx 'include agent-workspace.conf' "$kitty_conf"; then
-  printf '\n# agent-workspace (Option as Alt for Neovim and tmux keys)\ninclude agent-workspace.conf\n' >>"$kitty_conf"
+  printf '\n# agent-workspace (Option as Alt, project tabs, Cmd-T into tmux)\ninclude agent-workspace.conf\n' >>"$kitty_conf"
   note "added include agent-workspace.conf to $kitty_conf"
 fi
 grep -q '^font_family' "$kitty_conf" ||
   note "Tip: add 'font_family JetBrainsMono Nerd Font' to $kitty_conf for file icons."
 
-step "Commands: open-project, t, p, gd"
+step "Commands: open-project, t, p, gd, tab"
 for script in "$REPO"/bin/*; do
   link "$script" "$HOME/.local/bin/$(basename "$script")"
 done
@@ -175,6 +177,6 @@ cat <<'EOF'
 Done. Open a project:
   - Finder: right-click a folder > Quick Actions > Open in Neovim
   - Terminal: t (this folder), p (pick a project), gd (git changes of this repo)
-Inside Neovim: Space tc starts Claude in the bottom panel, Alt-g shows git changes.
+Inside Neovim: Space tc starts Claude in a new tab, Alt-g shows git changes.
 Keys: nvim/README.md
 EOF
