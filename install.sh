@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Sets up agent-workspace on a Mac: projects as kitty tabs, each a tmux session
-# with Neovim, shells and agents as tabs; the `t` / `p` / `gd` / `tab` commands
+# with Neovim, shells and agents as tabs; the `t` / `p` / `gd` / `projects` / `tab` commands
 # and Finder's "Open in Neovim".
 # Safe to run again: it only changes what isn't set up yet.
 #
@@ -116,7 +116,7 @@ fi
 grep -q '^font_family' "$kitty_conf" ||
   note "Tip: add 'font_family JetBrainsMono Nerd Font' to $kitty_conf for file icons."
 
-step "Commands: open-project, t, p, gd, tab"
+step "Commands: open-project, t, p, gd, projects, tab"
 for script in "$REPO"/bin/*; do
   link "$script" "$HOME/.local/bin/$(basename "$script")"
 done

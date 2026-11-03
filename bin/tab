@@ -4,8 +4,6 @@
 #   tab new [session]                 new shell tab in the project folder, named
 #                                     "shell N" with the lowest free N
 #   tab close <client> <window-id>    ask, then close that tab (just that terminal)
-#   tab close-project <client> <session>  ask, then close the project and all its
-#                                     tabs (its kitty tab on top closes with it)
 #
 # Used by tmux.conf (Alt-t, Cmd-T, the + and x on the tab line, prefix c) and
 # Neovim's Space tn. Session defaults to the one you're in.
@@ -27,19 +25,11 @@ close() {
   tmux confirm-before -t "$1" -p "Close ${name//\#/##}? (y/n)" "kill-window -t '$2'"
 }
 
-close_project() {
-  local name
-  name="$(tmux display -p -t "$2" '#{session_name}')"
-  tmux confirm-before -t "$1" -p "Close ${name//\#/##} and all its tabs? (y/n)" \
-    "kill-session -t '$2' ; run-shell -b ~/.tmux/plugins/tmux-resurrect/scripts/save.sh"
-}
-
 case "$1" in
   new) new "$2" ;;
   close) close "$2" "$3" ;;
-  close-project) close_project "$2" "$3" ;;
   *)
-    sed -n '2,11p' "${0:A}" | sed 's/^# \{0,1\}//'
+    sed -n '2,8p' "${0:A}" | sed 's/^# \{0,1\}//'
     [ -z "$1" ] || [ "$1" = -h ] || [ "$1" = --help ]
     ;;
 esac

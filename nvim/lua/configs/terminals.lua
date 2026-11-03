@@ -13,6 +13,7 @@ M.agents = {
   { key = "o", name = "opencode", cmd = "opencode" },
   { key = "k", name = "kilo", cmd = "kilo" },
   { key = "g", name = "gemini", cmd = "gemini" },
+  { key = "f", name = "freebuff", cmd = "freebuff" },
 }
 
 -- The port of this Neovim's claudecode.nvim server, from its lock file.

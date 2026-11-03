@@ -1,48 +1,15 @@
 #!/bin/zsh
 # open-project [dir]: open (or return to) the workspace for a project folder.
-# Each project is a kitty tab (the tabs along the top) attached to a tmux session
-# of its own. In it, tmux's tabs along the bottom are full-screen windows:
-# "nvim" (Neovim), then "shell 1", "shell 2"... (+ or Alt-t / Cmd-T adds one).
-# Every window starts in the project folder. Projects keep running in tmux when
-# kitty closes; opening kitty again brings back a tab for each of them.
+# Each project is a tab of the projects bar along the top (bin/projects), showing
+# a tmux session of its own. In it, tmux's tabs along the bottom are full-screen
+# windows: "nvim" (Neovim), then "shell 1", "shell 2"... (+ or Alt-t / Cmd-T adds
+# one). Every window starts in the project folder. Projects keep running in tmux
+# when kitty closes; opening kitty again shows them all.
 # Used by `t`, `p`, tmux's prefix P, Finder's "Open in Neovim" Quick Action and
 # folders dropped on kitty's Dock icon (--window: also bring kitty to the front).
-# open-project --all: kitty's startup session (kitty/startup-session.conf) runs
-# this, so a freshly opened kitty gets a tab for every project.
 
-# What a project's kitty tab runs. zsh -lic loads your shell setup (PATH).
-attach=(/bin/zsh -lic 'exec tmux attach -t "=$1"' attach)
 kitten=/Applications/kitty.app/Contents/MacOS/kitten
-
-if [ "$1" = --all ]; then
-  if ! tmux has-session 2>/dev/null; then
-    # tmux isn't running (after a restart): start it, which makes tmux-continuum
-    # restore the saved projects, and wait until no more sessions appear.
-    tmux new-session -d -s _start
-    count=1 same=0
-    for i in {1..40}; do
-      sleep 0.5
-      n="$(tmux list-sessions 2>/dev/null | wc -l)"
-      if [ "$n" -gt 1 ] && [ "$n" = "$count" ]; then
-        same=$((same + 1))
-        [ "$same" -ge 4 ] && break
-      else
-        same=0
-      fi
-      count="$n"
-    done
-    tmux kill-session -t =_start 2>/dev/null
-  fi
-  sessions=(${(f)"$(tmux list-sessions -F '#{session_name}' 2>/dev/null)"})
-  for s in $sessions; do
-    "$kitten" @ ls --match "var:aw_project=$s" >/dev/null 2>&1 ||
-      "$kitten" @ launch --type=tab --var "aw_project=$s" \
-        --cwd "$(tmux display -p -t "=$s:" '#{session_path}')" "${attach[@]}" "$s" >/dev/null
-  done
-  # This tab closes once the project tabs are open; with no projects it's a shell.
-  [ ${#sessions} -gt 0 ] || exec /bin/zsh -l
-  exit 0
-fi
+unset TMUX # it may be the bar's; every tmux below is yours
 
 window=0
 if [ "$1" = --window ]; then
@@ -67,30 +34,27 @@ if ! tmux has-session -t "=$name" 2>/dev/null; then
   tmux new-session -d -s "$name" -n nvim -c "$dir" "nvim .; true"
   tmux new-window -d -t "=$name:" -n "shell 1" -c "$dir"
 fi
+~/.local/bin/projects show "$name"
 
-# kitty's remote control socket (listen_on in kitty/agent-workspace.conf), if a
-# kitty with this setup is running.
-socket=""
-for s in /tmp/kitty-aw-*(N); do
-  kill -0 "${s##*-}" 2>/dev/null && socket="unix:$s"
-done
-
-if [ -n "$socket" ]; then
-  # The project's tab if it has one (its aw_project variable), else a new tab.
-  "$kitten" @ --to "$socket" focus-tab --match "var:aw_project=$name" 2>/dev/null ||
-    "$kitten" @ --to "$socket" launch --type=tab --var "aw_project=$name" --cwd "$dir" \
-      "${attach[@]}" "$name" >/dev/null
+# Shown already when kitty (or another terminal) has the bar open.
+if [ -n "$(tmux -L projects list-clients 2>/dev/null)" ]; then
   [ "$window" = 1 ] && open -a kitty
+elif [ -n "$AW_NO_ATTACH" ]; then
+  : # the bar's own picker: it attaches next
 elif [ "$window" = 1 ]; then
-  # Start kitty with a tab for every project tmux has open, this one last (in front).
-  session="$(mktemp -t aw-session)"
-  for s in ${(f)"$(tmux list-sessions -F '#{session_name}' | grep -vxF -- "$name")"} "$name"; do
-    print -r -- "new_tab $s" >>"$session"
-    print -r -- "launch --var aw_project=$s ${(j: :)${(q)attach[@]}} ${(q)s}" >>"$session"
+  # A kitty window with the bar: in the running kitty (its remote control
+  # socket, listen_on in kitty/agent-workspace.conf), else a new kitty.
+  socket=""
+  for s in /tmp/kitty-aw-*(N); do
+    kill -0 "${s##*-}" 2>/dev/null && socket="unix:$s"
   done
-  /Applications/kitty.app/Contents/MacOS/kitty --session "$session" >/dev/null 2>&1 &!
-elif [ -n "$TMUX" ]; then
-  tmux switch-client -t "=$name"
+  if [ -n "$socket" ]; then
+    "$kitten" @ --to "$socket" launch --type=os-window --var aw_project=1 \
+      /bin/zsh -lic 'exec ~/.local/bin/projects' >/dev/null
+    open -a kitty
+  else
+    /Applications/kitty.app/Contents/MacOS/kitty >/dev/null 2>&1 &!
+  fi
 else
-  exec tmux attach -t "=$name"
+  exec ~/.local/bin/projects # in this terminal
 fi

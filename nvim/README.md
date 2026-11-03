@@ -4,7 +4,7 @@ NvChad v2.5 on Neovim 0.12, set up for Flutter/Dart (plus the iOS and Android fo
 
 ## How it's meant to be used
 
-Each project is a kitty tab along the top. Inside it, the tabs along the bottom are full screen: Neovim, then a shell, and as many more shells and agents as you like (`+`, Alt-t or Cmd-T for a shell). They're tmux windows, so they're saved and restored with the project. `Space tc` opens Claude in a new tab (already connected, so it sees your selection and shows edits as diffs: `Space aa` / `Space ad`). `Space tx` Codex, `Space to` OpenCode, `Space tk` Kilo, `Space tg` Gemini, `Space tn` a plain shell. Every press starts another one; all keep running in the background. Files an agent changes reload in Neovim within a second; Alt-g shows everything it changed as side-by-side diffs (Alt-g again to go back). Click a tab or press Alt-1 to get back to Neovim.
+Each project is a tab along the top (`+` opens one, `×` closes it). Inside it, the tabs along the bottom are full screen: Neovim, then a shell, and as many more shells and agents as you like (`+`, Alt-t or Cmd-T for a shell). They're tmux windows, so they're saved and restored with the project. `Space tc` opens Claude in a new tab (already connected, so it sees your selection and shows edits as diffs: `Space aa` / `Space ad`). `Space tx` Codex, `Space to` OpenCode, `Space tk` Kilo, `Space tg` Gemini, `Space tf` Freebuff, `Space tn` a plain shell. An agent's tab shows its session's name. Every press starts another one; all keep running in the background. Files an agent changes reload in Neovim within a second; Alt-g shows everything it changed as side-by-side diffs (Alt-g again to go back). Click a tab or press Alt-1 to get back to Neovim.
 
 ## Setup
 
@@ -81,10 +81,10 @@ Swift and Objective-C in `ios/` need to know the Xcode project. Once per app: bu
 
 ## Opening projects
 
-Each project gets a tmux session, all in one tmux, shown in a kitty tab of its own: window 1 runs Neovim, window 2 "shell 1" (Alt-1 / Alt-2). Every terminal starts in the project folder. Opening a project again returns to its running session. tmux saves every project every 5 minutes and restores them all when it next starts, agents continuing their last conversation; prefix Ctrl-s / Ctrl-r save / restore by hand.
+Each project gets a tmux session, all in one tmux, shown in a tab of its own along the top: window 1 runs Neovim, window 2 "shell 1" (Alt-1 / Alt-2). Every terminal starts in the project folder. Opening a project again returns to its running session. tmux saves every project every 5 minutes and restores them all when it next starts, agents continuing their last conversation; prefix Ctrl-s / Ctrl-r save / restore by hand.
 
-- Finder: right-click a folder → Quick Actions → **Open in Neovim**, or drop a folder on kitty's Dock icon. With tmux already open in kitty, the project joins it; otherwise a kitty window opens. Source: `macos/Open in Neovim.workflow` in this repo.
+- Finder: right-click a folder → Quick Actions → **Open in Neovim**, or drop a folder on kitty's Dock icon. With kitty open, the project joins it; otherwise kitty opens. Source: `macos/Open in Neovim.workflow` in this repo.
 - Terminal: `t` opens the folder you're in (`t <dir>` another one); `p` fuzzy-picks from every project under `~/Projects`, `~/Developer`, `~/code` and `~/Desktop` (or the folders listed one per line in `~/.config/agent-workspace/roots`).
-- Inside tmux: prefix (Ctrl-Space) then `P` picks a project in a popup and switches to it; prefix `s` lists open sessions.
+- Inside tmux: `+` at the top, or prefix (Ctrl-Space) then `P` or `s`, picks a project in a popup and switches to it.
 
 The scripts are in `bin/` at the top of this repo, linked into `~/.local/bin`.
