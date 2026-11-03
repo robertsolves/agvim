@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Sets up agent-workspace on a Mac: Neovim (code on top, coding agents below),
-# tmux, kitty, the `t` / `p` / `gd` commands and Finder's "Open in Neovim".
+# Sets up agent-workspace on a Mac: projects as kitty tabs, each a tmux session
+# with Neovim, shells and agents as tabs; the `t` / `p` / `gd` / `tab` commands
+# and Finder's "Open in Neovim".
 # Safe to run again: it only changes what isn't set up yet.
 #
 #   curl -fsSL https://raw.githubusercontent.com/robertsolves/agent-workspace/main/install.sh | bash
