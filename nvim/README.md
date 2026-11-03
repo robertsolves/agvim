@@ -8,18 +8,7 @@ Code on top, terminals below. Opening a project starts a shell in a panel along 
 
 ## Setup
 
-1. `brew install neovim tmux ripgrep fd lazygit tree-sitter-cli`
-2. Install the SDKs you use: Flutter (fvm projects are picked up from `.fvm/flutter_sdk`), Rust via rustup (`rustup component add rust-analyzer clippy`), Xcode (Swift's `sourcekit-lsp` and `lldb-dap`), Node, Python, Terraform.
-3. `brew install imagemagick xcode-build-server` (JPG/SVG images, Flutter iOS code intelligence).
-4. Clone this repo to `~/.config/nvim` and run `nvim`. Plugins, treesitter parsers and Mason tools install on first start.
-5. Use a Nerd Font in the terminal (kitty: `font_family JetBrainsMono Nerd Font`).
-
-Mason builds basedpyright and debugpy with the first `python3` on PATH. Homebrew's Python 3.15 can't create venvs with pip on macOS 26 (`platform.mac_ver()` is empty), so if those fail, install them with 3.14 first on PATH:
-
-```sh
-mkdir -p /tmp/py314 && ln -sf /opt/homebrew/bin/python3.14 /tmp/py314/python3
-PATH=/tmp/py314:$PATH nvim --headless "+MasonToolsInstallSync" +qa
-```
+Run `install.sh` at the top of this repo (see the repo's README). It links this folder to `~/.config/nvim` and installs the plugins, parsers and language servers. SDKs for the languages you use (Flutter, Rust, Xcode, Node, Python, Terraform) are your own installs.
 
 ## Where things live
 
@@ -30,6 +19,9 @@ PATH=/tmp/py314:$PATH nvim --headless "+MasonToolsInstallSync" +qa
 | Formatting | `lua/configs/conform.lua` |
 | Debuggers | `lua/configs/dap.lua` |
 | Keys | `lua/mappings.lua`, plus `after/ftplugin/{dart,rust,slint}.lua` |
+| Terminal panel | `lua/configs/terminals.lua` |
+| Treesitter parsers | `lua/configs/treesitter_parsers.lua` |
+| Line numbers coloured by mode | `local-plugins/nvim-color-line-numbers-by-mode` |
 
 ## Keys
 
@@ -92,8 +84,8 @@ Swift and Objective-C in `ios/` need to know the Xcode project. Once per app: bu
 
 Each project gets a tmux session: window 1 runs Neovim, window 2 a shell (Alt-1 / Alt-2). Opening a project again returns to its running session.
 
-- Finder: right-click a folder → Quick Actions → **Open in Neovim** (opens kitty). Source: `~/Library/Services/Open in Neovim.workflow`.
-- Terminal: `t` opens the folder you're in (`t <dir>` another one); `p` fuzzy-picks from every project under `~/Projects`, `~/Desktop` and `~/reportaday`.
+- Finder: right-click a folder → Quick Actions → **Open in Neovim** (opens kitty). Source: `macos/Open in Neovim.workflow` in this repo.
+- Terminal: `t` opens the folder you're in (`t <dir>` another one); `p` fuzzy-picks from every project under `~/Projects`, `~/Developer`, `~/code` and `~/Desktop` (or the folders listed one per line in `~/.config/agent-workspace/roots`).
 - Inside tmux: prefix (Ctrl-Space) then `P` picks a project in a popup and switches to it; prefix `s` lists open sessions.
 
-The scripts are `~/.local/bin/{open-project,t,p}`.
+The scripts are in `bin/` at the top of this repo, linked into `~/.local/bin`.

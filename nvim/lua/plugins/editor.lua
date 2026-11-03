@@ -1,6 +1,3 @@
--- Use the local clone of the line-number plugin while its fixes aren't pushed.
-local line_numbers_dir = vim.fn.expand "~/Projects/nvim/nvim-color-line-numbers-by-mode"
-
 -- NvimTree with custom keymaps
 local function nvim_tree_on_attach(bufnr)
   local api = require "nvim-tree.api"
@@ -23,8 +20,9 @@ end
 
 return {
   {
+    -- Kept in this repo (local-plugins/) with fixes the GitHub version lacks.
     "dev-cetera/nvim-color-line-numbers-by-mode",
-    dir = vim.uv.fs_stat(line_numbers_dir) and line_numbers_dir or nil,
+    dir = vim.fn.stdpath "config" .. "/local-plugins/nvim-color-line-numbers-by-mode",
     lazy = false,
     opts = {},
   },
@@ -50,7 +48,7 @@ return {
       local opts = require "nvchad.configs.nvimtree"
       opts.view = vim.tbl_extend("force", opts.view or {}, { width = 60 })
       opts.on_attach = nvim_tree_on_attach
-      -- Big repos like compledo need more than the default 400ms for git status.
+      -- Big repos need more than the default 400ms for git status.
       opts.git = vim.tbl_extend("force", opts.git or {}, { timeout = 3000 })
       return opts
     end,

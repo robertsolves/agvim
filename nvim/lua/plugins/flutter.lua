@@ -5,7 +5,7 @@ return {
     dependencies = { "nvim-lua/plenary.nvim", "mfussenegger/nvim-dap" },
     opts = function()
       return {
-        -- Use the project's .fvm/flutter_sdk when there is one (compledo pins 3.47.7).
+        -- Use the project's .fvm/flutter_sdk when there is one.
         fvm = true,
         ui = { border = "rounded" },
         widget_guides = { enabled = true },

@@ -1,0 +1,29 @@
+#!/bin/zsh
+# open-project [dir]: open (or return to) the tmux workspace for a project folder.
+# Window 1 "code" runs Neovim (agents in its bottom panel: Space tc / tx / to),
+# window 2 "shell" is for flutter run, servers and git. Alt-1 / Alt-2 switch.
+# Used by `t`, `p`, tmux's prefix P and Finder's "Open in Neovim" Quick Action.
+
+dir="${1:-$PWD}"
+dir="${dir:A}" # absolute, symlinks resolved
+if [ ! -d "$dir" ]; then
+  dir="${dir:h}" # a file was given: use its folder
+fi
+
+name="${${dir:t}//[.:]/_}"
+# Two projects with the same folder name get "parent_name" for the second one.
+existing="$(tmux list-sessions -F '#{session_name}	#{session_path}' 2>/dev/null | awk -F'\t' -v n="$name" '$1 == n { print $2 }')"
+if [ -n "$existing" ] && [ "$existing" != "$dir" ]; then
+  name="${${dir:h:t}//[.:]/_}_$name"
+fi
+
+if ! tmux has-session -t "=$name" 2>/dev/null; then
+  tmux new-session -d -s "$name" -n code -c "$dir" "nvim ."
+  tmux new-window -d -t "=$name:" -n shell -c "$dir"
+fi
+
+if [ -n "$TMUX" ]; then
+  tmux switch-client -t "=$name"
+else
+  exec tmux attach -t "=$name"
+fi
