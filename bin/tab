@@ -20,9 +20,11 @@ new() {
 }
 
 close() {
+  # Run from run-shell, which shows any output or a non-zero exit in the pane
+  # (view mode: it swallows every key and click): -b returns at once with 0.
   local name
-  name="$(tmux display -p -t "$2" '#{window_name}')"
-  tmux confirm-before -t "$1" -p "Close ${name//\#/##}? (y/n)" "kill-window -t '$2'"
+  name="$(tmux display -p -t "$2" '#{window_name}')" || return 0
+  tmux confirm-before -b -t "$1" -p "Close ${name//\#/##}? (y/n)" "kill-window -t '$2'"
 }
 
 case "$1" in

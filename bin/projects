@@ -77,11 +77,15 @@ case "$1" in
     bar select-window -t "=projects:=$2"
     ;;
   close)
-    name="$(bar display -p -t "$3" '#{window_name}')" || exit
+    # The bar runs this from run-shell, which shows any output or a non-zero
+    # exit in the pane (view mode: it swallows every key and click). So the
+    # prompt is -b (returns at once, 0 whatever the answer) and the close
+    # itself is quiet.
+    name="$(bar display -p -t "$3" '#{window_name}')" || exit 0
     # Your tmux's socket, so tmux-resurrect saves that one, not the bar.
     sock="$(work display -p '#{socket_path}')"
-    bar confirm-before -t "$2" -p "Close ${name//\#/##} and all its tabs? (y/n)" \
-      "run-shell -b \"env -u TMUX tmux kill-session -t '=$name' ; TMUX='$sock,0,0' ~/.tmux/plugins/tmux-resurrect/scripts/save.sh\""
+    bar confirm-before -b -t "$2" -p "Close ${name//\#/##} and all its tabs? (y/n)" \
+      "run-shell -b \"{ env -u TMUX tmux kill-session -t '=$name' ; TMUX='$sock,0,0' ~/.tmux/plugins/tmux-resurrect/scripts/save.sh ; } >/dev/null 2>&1 ; true\""
     ;;
   *)
     sed -n '2,13p' "${0:A}" | sed 's/^# \{0,1\}//'

@@ -54,7 +54,7 @@ Leader is Space. `Space` then wait shows every key (which-key). `Space ch` opens
 | `]h` `[h`, `Space gs` / `Space gu` / `Space gw` | next/previous change, stage / undo change / word diff |
 | `Space tn`, Alt-t, Cmd-T or `+` | new full-screen shell tab |
 | Alt-. / Alt-, / `Space tl` / `Space tr` | next / previous / pick / rename terminal |
-| click a tab (top: projects, bottom: this project's tabs) | switch to it; `×` on a bottom tab closes that terminal, `× project` closes the project and all its tabs (both ask), `+ project` opens one; right-click a bottom tab to rename it |
+| click a tab (top: projects, bottom: this project's tabs) | switch to it; `×` on a bottom tab closes that terminal, `×` on a project at the top closes it and all its tabs (both ask), `+` at the top opens a project; right-click a bottom tab to rename it |
 | `Space tc` `tx` `to` `tk` `tg` | new Claude, Codex, OpenCode, Kilo, Gemini tab |
 | `Space pi` | SVG rendered in a float (first frame), or the image under the cursor |
 | `Space pv` / `Space pc` | live browser preview of SVG (animated SMIL plays), HTML, Markdown / stop |
