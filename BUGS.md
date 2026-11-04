@@ -4,6 +4,8 @@ A review of the whole repo on 2026-11-04: `bin/agvim`, `lib/`, both tmux configs
 
 Most of these come from reading the code. The ones marked **(checked)** were also run on Linux with zsh and a scratch tmux server. The tmux here is 3.4, older than AgVim needs, so nothing that depends on tmux's behaviour was checked end to end.
 
+Entries 1 to 32 come from the first pass. Entries 33 to 58 come from a second pass that also covered `tests/`, the website, the docs, the agent skills and the parts of the Neovim config the first pass only skimmed.
+
 Severity: **High** means lost work or a broken install, **Medium** means a feature does the wrong thing in normal use, **Low** means an edge case, a rough edge, or wrong docs.
 
 ---
@@ -142,8 +144,8 @@ The refresh line removes `terminal` from `sessionoptions` and then runs `:restar
 ### 28. A folder path with `#`, `$` or `"` breaks closing that folder's tab
 `lib/tab:233-234`. The path is escaped for `'` only, then passed through tmux's `confirm-before` and `run-shell`, which expand `#{…}`/`#X` formats and `$VAR` in double quotes. A folder such as `~/Projects/C#Tools` or one with `$` in its name gets mangled, and the folder isn't taken out.
 
-### 29. A fresh install from the app ends up on `main`, not on the release it was downloaded as
-`macos/app/first-run:134-136`. First-run runs `git reset --hard origin/main`, so a new user gets whatever is on `main` that day, unreleased work included. `lib/auto-update` says it "follows releases (version tags), not main, so nobody gets unfinished work". It also means the files on disk no longer match what `install.sh` just installed (for example the Finder extension it built).
+### 29. A fresh install ends up on `main`, not on a release
+`macos/app/first-run:134-136`, `install.sh:56-63`. The `curl | bash` install clones `main` the same way. First-run runs `git reset --hard origin/main`, so a new user gets whatever is on `main` that day, unreleased work included. `lib/auto-update` says it "follows releases (version tags), not main, so nobody gets unfinished work". It also means the files on disk no longer match what `install.sh` just installed (for example the Finder extension it built).
 
 ### 30. The PATH line in `.zshrc` depends on the PATH the installer was run with
 `install.sh:178-187`. It only adds the line when `~/.local/bin` isn't on the PATH of the shell running the installer. Running it from a shell that has it (bash, a parent process, an IDE) skips it, and a new zsh then can't find `agvim`. Users of bash or fish never get the line.
@@ -156,3 +158,108 @@ The refresh line removes `terminal` from `sessionoptions` and then runs `:restar
 - `nvim/local-plugins/nvim-color-line-numbers-by-mode/…/init.lua:129-137`: in modes without a colour (command, terminal), only `LineNr` goes back to the theme, and `CursorLineNr` keeps the colour of the previous mode.
 - `nvim/lua/configs/svg_preview.lua:64-67`: every `Space pi` on an SVG leaves a `.svg` and a `.png` in the temp folder.
 - `nvim/lua/configs/terminals.lua:215`: Space tr puts the name inside single quotes for tmux, so a name with `'` in it fails.
+
+---
+
+# Second pass
+
+## Medium
+
+### 33. `agvim tab` and `agvim agent` take the command's own flags as theirs
+`bin/agvim:367-371`, `bin/agvim:70-85` **(checked)**
+
+`tab` passes everything through `parse`, which handles options anywhere among the arguments. Any flag meant for the command is either taken by agvim or refused:
+- `agvim tab ls -la` stops with "no option called -la here" (checked).
+- `agvim tab claude --model opus` runs plain `claude`: `--model` and its value go into `$ai_model` and are dropped without a word (checked). `-n`, `-p` and `--url` are taken the same way.
+- `agvim tab claude --resume` stops with "no option called --resume" (checked).
+
+`--` works around it, but neither the help nor the guide mentions it. The guide's example `agvim tab make -p work` only works because `make` has no flags.
+
+### 34. `agvim ai test copilot` hangs when another source is in use
+`bin/agvim:418-422`, `lib/copilot-signin.lua:91-92`, `nvim/lua/plugins/ai.lua:169`
+
+copilot.lua is loaded only when `cond = ai.is_copilot()` holds, which depends on `use=` in `~/.config/agvim/ai`. `agvim ai test copilot` (and `agvim ai test` with nothing chosen yet but a different `use`) starts headless Neovim with `copilot-signin.lua` without first switching `use` back to copilot, the way `ai signin` does. lazy.nvim skips a plugin whose `cond` is false, so `require "copilot.api"` fails. The 15-minute timeout is only set after that line, and there's no `+qa`, so headless Neovim sits there until killed. I haven't run this. It needs a check on a Mac with another source chosen.
+
+### 35. Errors from the `+ Project` picker and `prefix s` / `prefix P` vanish
+`tmux/projects.conf:48`, `tmux/tmux.conf:151-152`
+
+These run `agvim _p` in `display-popup -E`. `-E` closes the popup as soon as the command exits, whether it worked or not (`-EE` would keep it open after a failure). So "X exists already", "has no folders left", "/ can't be a project" and the rest flash for a moment and disappear, and nothing seems to have happened.
+
+### 36. "New project from a folder…" fails when another project has the same folder name
+`lib/p:108-113`, `lib/project:297-305`
+
+The picker always passes a name, defaulting to the folder's own name. `new` with a name stops on "exists already: use agvim add" whenever a project by that name holds other folders. So picking `~/work/app` when `~/old/app` is already the project `app`, and pressing Enter at the suggested name, fails. `agvim new` without a name handles the same case by picking `old_app`-style names (`save_new`). Combined with bug 35, it fails silently inside the bar.
+
+### 37. Kotlin and Gradle `.kts` files start a server that can't run
+`nvim/lua/plugins/lsp.lua:21`, `nvim/lua/configs/lspconfig.lua:155`, `Brewfile`
+
+`kotlin_lsp` is enabled and Mason installs JetBrains' `kotlin-lsp`, which needs a Java runtime (17 or newer). Neither the Brewfile nor `install.sh`'s list of missing SDKs mentions Java. On a Mac without one, opening `android/app/build.gradle.kts` in a Flutter app gets an error from the server crashing. Unverified: it depends on the Mason package's current launcher.
+
+### 38. Refreshing a Neovim that shows nvim-tree probably brings back an empty window
+`lib/project:242`, `nvim/lua/plugins/editor.lua:290-303`
+
+The refresh line saves the layout with `:mksession` and restarts with it. A session file records the nvim-tree window as an ordinary buffer named `NvimTree_1`, which comes back blank. On top of that, the new Neovim's `VimEnter` opens another tree before the session is sourced. This is the usual nvim-tree and sessions problem. I haven't run it here, so it needs a look on a Mac.
+
+### 39. Saved shell output is never cleaned up
+`lib/project:142`
+
+Each save writes `<window>.<pane>.txt` for every shell pane, with up to 2000 lines of what it printed. Files for tabs that have since been closed, or are now running an agent, are never deleted. So `saved-projects/.tabs/<project>/` keeps old shell output (which the guide warns "can include anything you printed") long after the tab is gone. Only `close` on a console and `delete` remove the folder.
+
+## Low
+
+### 40. Auto-update throws away lockfile changes even when it then doesn't update
+`lib/auto-update:185-186`. When a newer release exists, it runs `git checkout -- nvim/lazy-lock.json` before it checks whether the clone has other changes. When it then finds them and gives up, the lockfile has already been reset. Someone who ran `:Lazy update` on purpose loses it on the next launch. `agvim update` resets the lockfile unconditionally too (`bin/agvim:497`).
+
+### 41. `agvim update` on a branch other than `main`
+`bin/agvim:497-508`. Auto-update stays out of a clone on another branch, but `agvim update` doesn't check: it tries `git merge --ff-only <tag>` on whatever branch is checked out. That fast-forwards a feature branch that happens to be behind, or fails with "Your own changes there may be in the way", which isn't the reason.
+
+### 42. The installer prepends to PATH, against the repo's own rule
+`install.sh:183`, `nvim/lua/plugins/lsp.lua:70`. The develop skill says "Never put AgVim's folders ahead of the user's PATH: append them". The `.zshrc` line is `export PATH="$HOME/.local/bin:$PATH"`. In Neovim, the Python shim for Mason is put first on `PATH` for the whole session, so `:!python3`, terminals inside Neovim and anything else started from it get python3.14 (or 3.13, 3.12) instead of the user's `python3`.
+
+### 43. Treesitter languages registered to a parser that isn't installed
+`nvim/lua/options.lua:58`, `nvim/lua/configs/treesitter_parsers.lua`. `jproperties` and `xcconfig` are mapped to the `properties` parser, which isn't in the list, so neither gets highlighting. C++, CMake and Objective-C++ have language servers configured (clangd, neocmake, sourcekit) but no parser (`cpp`, `cmake`; `objcpp` maps to nothing), so they have no treesitter highlighting either.
+
+### 44. `:Gblame` in vim-fugitive's lazy-load commands no longer exists
+`nvim/lua/plugins/editor.lua:377`. fugitive removed `:Gblame` in favour of `:Git blame`. The entry makes lazy.nvim create a `:Gblame` stub that loads fugitive and then fails with "Not an editor command".
+
+### 45. The website's dependency lists are missing plugins
+`docs/index.html:217-240`. AGENTS.md says to add new dependencies to the site's lists. These are loaded but not listed: SchemaStore.nvim, vim-fugitive, nvim-dap-python, nvim-dap-virtual-text, nvim-nio, plenary.nvim and the local nvim-color-line-numbers-by-mode.
+
+### 46. A test checks files from an old version and can't fail
+`tests/full.sh:54`, `tests/run.sh:11`. The "Finder with nothing open" step writes `saved-projects/.terminal` and reads `saved-projects/.open-agvim.command`. The code now uses `~/.config/agvim/terminal` and `~/.config/agvim/open.command`. The expected lines for `full` don't include anything from this step, so it passes whatever happens, and Finder opening AgVim when nothing is open isn't tested.
+
+### 47. `tests/run.sh` cleans up other runs' tests
+`tests/run.sh:26-36`. After each test, `clean_up` kills the tmux servers and processes of every `/tmp/awf.*` folder and deletes them, not just the ones the current test made. Two runs at once (for example `agvim release`'s test run while an agent runs `/test`) break each other, failing with confusing logs.
+
+### 48. Running the tests overwrites the built app
+`tests/run.sh:8`. The tests begin with `macos/bundle.sh --app-only`, which deletes and rebuilds `dist/AgVim.app` from the working tree, uncommitted files included. A `dist/AgVim.app` or `.dmg` someone was about to share is replaced without a word.
+
+### 49. Finder's menu runs the full interactive zsh setup
+`macos/finder/build.sh:45`. The `run` script uses `zsh -lic`. An interactive `.zshrc` that starts or attaches tmux, asks a question (oh-my-zsh's "update now?"), or prints a lot runs before `agvim`, and can hang the action or keep it from running. `-l` alone (a login shell) would already give Homebrew's `PATH`.
+
+### 50. `agvim open` from inside a project's tmux, with no bar open, probably shows the project inside itself
+`lib/open-project:188-196`, `lib/projects:66-91`. When the user is in a project's session through a plain `tmux attach` (no bar), `open-project` runs `projects` in that pane. `projects` only refuses when the bar has clients, so it attaches the bar there. The bar's tab for the current project then attaches to the session it's already inside, which mirrors itself. Not run, but nothing in the code stops it.
+
+### 51. Two tabs for folders with the same name and parent name get the same tab name
+`lib/project:96-107`. `folder_tab` tries the folder's name, then `parent_name`, then uses that even when it's also taken. After that, `select-window -t "=$1:=$tab"` (`lib/project:338`) and anything else that finds a tab by name picks the wrong one or fails.
+
+### 52. Finder's New AgVim Project on a file suggests the file's name
+`lib/project:352`. When the selection is a file, the dialog's default name is the file's name (`main.dart`, which becomes `main_dart`), but the project is made from the file's folder.
+
+### 53. Without kitty, Finder and the icon can open the wrong app
+`lib/projects:28-39`, `lib/terminal:145-147`. `last-terminal` is whichever app the bar was last opened from, found by walking parent processes. Opened from VS Code's, Cursor's or Zed's built-in terminal, that's the editor. Without kitty installed, `lib/terminal` then runs `open -a <editor> open.command`, which opens the script as a text file instead of running it.
+
+### 54. A refreshed Neovim leaves a session file behind every time
+`lib/project:240`. Each refresh writes `~/.local/state/nvim/agvim-refresh-<pane id>.vim`. Pane ids keep growing while the tmux server runs, so the files pile up and are never removed (only uninstall deletes the folder).
+
+### 55. Images break in a Neovim outside AgVim's two-level setup
+`nvim/lua/plugins/preview.lua:252-265`. The extra tmux wrapping is turned on whenever Neovim is in some tmux and the bar happens to have a kitty or Ghostty client. A Neovim in an ordinary, one-level tmux session (or in an `agvim diff` popup) gets wrapped twice, and images don't show.
+
+### 56. The autosave and a close can write the same file at once
+`lib/projects:54-64`, `lib/project:130-147`. The 5-minute autosave and a `close` (or `agvim save`) can save the same project at the same moment. Both write `tabs.tmp` and the `.txt` captures in the same folder, so one can move a half-written `tabs.tmp` into place, or fail its `mv` because the other already did. `.tmp` in `saved-projects/` is shared the same way by `remove` and `delete`.
+
+### 57. `agvim diff` outside a git repository leaves an empty Neovim
+`lib/gd:5`. `DiffviewOpen` fails with an error, but Neovim stays open on an empty buffer. The `q` mapping still quits it, but nothing explains what happened.
+
+### 58. Every unopened tab, `agvim refresh` and autosave run `ps` once per pane
+`lib/project:110-126`. `program_on` runs `ps -t` for every pane, once each in `save` (for every session, every 5 minutes) and in `refresh`. With many projects and splits that's dozens of `ps` calls each time. Not a bug on its own, but it adds to bug 23's background load.
