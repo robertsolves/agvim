@@ -261,5 +261,5 @@ Each save writes `<window>.<pane>.txt` for every shell pane, with up to 2000 lin
 ### 57. `agvim diff` outside a git repository leaves an empty Neovim
 `lib/gd:5`. `DiffviewOpen` fails with an error, but Neovim stays open on an empty buffer. The `q` mapping still quits it, but nothing explains what happened.
 
-### 58. Every unopened tab, `agvim refresh` and autosave run `ps` once per pane
+### 58. `agvim refresh` and every autosave run `ps` once per pane
 `lib/project:110-126`. `program_on` runs `ps -t` for every pane, once each in `save` (for every session, every 5 minutes) and in `refresh`. With many projects and splits that's dozens of `ps` calls each time. Not a bug on its own, but it adds to bug 23's background load.
