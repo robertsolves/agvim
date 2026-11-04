@@ -1,14 +1,14 @@
 # AI autocomplete sources: id, name, kind, endpoint, model. One tab per column gap; "-" for
 # none. Kinds other than compatible are built into the plugins. A model of "ask" is asked for
-# when it is chosen, since those services change theirs often. Read by bin/agentnv and
+# when it is chosen, from the service's own list, since those change often. Read by bin/agentnv and
 # nvim/lua/configs/ai.lua.
 copilot	GitHub Copilot (free tier, sign in with GitHub)	copilot	-	-
 freechain	free-llm-chain (free models, runs on your Mac)	compatible	http://127.0.0.1:4000/v1/chat/completions	coder
-claude	Claude (Anthropic API key)	claude	-	-
-openai	OpenAI / Codex (OpenAI API key)	openai	-	-
-gemini	Gemini (Google AI Studio key, has a free tier)	gemini	-	-
-deepseek	DeepSeek (DeepSeek API key)	deepseek	-	-
-mistral	Mistral Codestral (Mistral API key)	codestral	-	-
+claude	Claude (Anthropic API key)	claude	-	claude-haiku-5-5
+openai	OpenAI / Codex (OpenAI API key)	openai	-	gpt-5.6-luna
+gemini	Gemini (Google AI Studio key, has a free tier)	gemini	-	gemini-3.5-flash
+deepseek	DeepSeek (DeepSeek API key)	deepseek	-	deepseek-v4-flash
+mistral	Mistral Codestral (Mistral API key)	codestral	-	codestral-latest
 xai	Grok (xAI API key)	compatible	https://api.x.ai/v1/chat/completions	ask
 groq	Groq (Groq API key, has a free tier)	compatible	https://api.groq.com/openai/v1/chat/completions	ask
 openrouter	OpenRouter (any model, some free)	compatible	https://openrouter.ai/api/v1/chat/completions	deepseek/deepseek-v4-flash

@@ -9,10 +9,10 @@ a() { print -r -- "\$ agentnv $*"; agentnv "$@" 2>&1; local rc=$?; [ $rc = 0 ] |
 export PATH="$HOME/.local/bin:$PATH"
 a ai </dev/null
 a ai list </dev/null | head -4
-print -r -- "secret-claude-key" | a ai claude
-print -r -- "secret-groq-key" | a ai groq
-print -r -- "secret-groq-key" | a ai groq --model some/model
-print -r -- "secret-custom" | a ai custom --url http://localhost:9/v1/chat/completions --model m1
+print -r -- "secret-claude-key" | a ai claude --no-check
+print -r -- "secret-groq-key" | a ai groq --no-check
+print -r -- "secret-groq-key" | a ai groq --model some/model --no-check
+print -r -- "secret-custom" | a ai custom --url http://localhost:9/v1/chat/completions --model m1 --no-check
 a ai nope </dev/null
 a ai </dev/null
 a ai list </dev/null | grep -E 'claude|custom|deepseek'
@@ -34,7 +34,7 @@ vim.cmd "qa!"
 LUA
 n() { ( export HOME="$real_home" AGENTNV_AI_FILE="$base/home/.config/agentnv/ai" AGENTNV_AI_OUT=$base/out; nvim --headless -c "luafile $base/check.lua" >/dev/null 2>&1; cat $base/out ); }
 n
-agentnv ai claude </dev/null >/dev/null 2>&1; n
-agentnv ai groq </dev/null >/dev/null 2>&1; n
+agentnv ai claude --no-check </dev/null >/dev/null 2>&1; n
+agentnv ai groq --no-check </dev/null >/dev/null 2>&1; n
 agentnv ai off </dev/null >/dev/null; n
 agentnv ai copilot </dev/null >/dev/null; n

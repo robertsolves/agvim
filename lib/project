@@ -417,7 +417,13 @@ case "$cmd" in
     win="$(bar list-windows -t '=projects' -F '#{window_name}	#{window_id}' 2>/dev/null | awk -F'\t' -v n="$1" '$1 == n { print $2 }')"
     [ -z "$win" ] || bar kill-window -t "$win" 2>/dev/null
     rm -rf -- "$store/$1" "$store/.tabs/$1"
-    bar has-session -t '=projects' 2>/dev/null && write_open
+    if bar has-session -t '=projects' 2>/dev/null; then
+      write_open
+    elif [ -f "$store/.open" ]; then
+      # Closed: take it off what was open last time too.
+      grep -vxF -- "$1" "$store/.open" >"$store/.tmp"
+      mv "$store/.tmp" "$store/.open"
+    fi
     ;;
   names)
     for f in "$store"/*(N.:t); do

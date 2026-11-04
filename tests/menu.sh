@@ -17,8 +17,8 @@ shot() { echo "----- $1"; o capture-pane -p -t o | sed -E 's/ +$//' | awk 'NF' |
 run() { o -f ~/outer.conf new-session -d -s o -x 100 -y 30 "$1; print EXIT=\$?; sleep 60"; o set -g status off; sleep 1.5; }
 key() { o send-keys -t o "$@"; sleep 0.8; }
 echo "=== menu, no history"; run agentnv; shot menu 7; key Escape; shot "esc" 2; o kill-server; sleep .3
-echo "=== folder"; run agentnv; key Down; key Down; key Enter; shot done 3; cat ~/open.log; o kill-server; sleep .3
-echo "=== uninstall row, answer no"; run agentnv; key Down; key Down; key Down; key Down; key Enter; shot prompt 14 | tail -3; key n; key Enter; shot "no" 3 | tail -2; o kill-server; sleep .3; ls -l ~/.local/bin/agentnv | cut -c1-10
+echo "=== folder"; run agentnv; o send-keys -t o -l 'projects folder'; sleep .4; key Enter; shot done 3; key Escape; cat ~/open.log; o kill-server; sleep .3
+echo "=== uninstall row, answer no"; run agentnv; o send-keys -t o -l Uninstall; sleep .4; key Enter; shot prompt 14 | tail -3; key n; key Enter; shot "no" 3 | tail -2; o kill-server; sleep .3; ls -l ~/.local/bin/agentnv | cut -c1-10
 echo "=== open project -> picker -> new"; run agentnv; key Enter; o send-keys -t o Enter; sleep .8; o send-keys -t o -l Work; sleep .4; key Enter; o send-keys -t o -l alpha; sleep .4; key Enter; key Enter; key Enter; sleep 2; shot opened 3
 tmux list-sessions -F '  #{session_name}'; pid=$(tmux -L projects list-clients -F '#{client_pid}'); kill -HUP $pid; sleep 3; o kill-server 2>/dev/null; sleep .3; tmux ls 2>&1 | head -1
 echo "=== menu with history"; run agentnv; shot menu 5; key Enter; sleep 2; shot continued 3; tmux list-sessions -F '  #{session_name}'

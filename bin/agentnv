@@ -30,6 +30,8 @@
 #   agentnv diff [rev]                 every git change here, side by side
 #   agentnv ai [source|off|list]       AI suggestions as you type: free Copilot, or your key
 #                                      for Claude, OpenAI, Gemini, DeepSeek and many more
+#   agentnv ai test [source]           check that a source really answers
+#   agentnv ai signin                  sign in to Copilot
 #   agentnv folder                     show where your projects are saved
 #   agentnv roots [add|remove folder]  where the project picker looks for folders
 #   agentnv terminal [app|auto]        which terminal the icon and Finder use
@@ -62,12 +64,14 @@ name=""
 no_open=""
 ai_url=""
 ai_model=""
+no_check=""
 parse() {
   while [ $# -gt 0 ]; do
     case "$1" in
       -p | --project) [ -n "$2" ] || die "$1 needs a project name"; project="$2"; shift 2 ;;
       -n | --name) [ -n "$2" ] || die "$1 needs a name"; name="$2"; shift 2 ;;
       --no-open) no_open=1; shift ;;
+      --no-check) no_check=1; shift ;;
       --url) [ -n "$2" ] || die "$1 needs a URL"; ai_url="$2"; shift 2 ;;
       --model) [ -n "$2" ] || die "$1 needs a model"; ai_model="$2"; shift 2 ;;
       -h | --help) help; exit 0 ;;
@@ -121,14 +125,37 @@ ai_name() {
   ai_row "$use" | cut -f2 | sed 's/ (.*//'
 }
 
-# Chooses source $1, asking for what it needs. Keys never reach the screen or arguments.
+# Copilot's sign-in, in this terminal (lib/copilot-signin.lua).
+ai_signin() {
+  ai_set use copilot
+  nvim --headless -c "luafile $lib/copilot-signin.lua"
+}
+
+# Asks the service for its models, to choose from. Empty if it won't say.
+ai_models() {
+  local url="$1" key="$2"
+  printf 'header = "Authorization: Bearer %s"\n' "$key" |
+    curl -sS -m 15 -K - "${url%/chat/completions}/models" 2>/dev/null |
+    grep -oE '"id"[[:space:]]*:[[:space:]]*"[^"]+"' | sed -E 's/.*"([^"]+)"$/\1/' | sort -u
+}
+
+# Chooses source $1, asking for what it needs, then checks it really works. Keys never
+# reach the screen or a command line.
 ai_use() {
-  local id="$1" row kind url model key answer
+  local id="$1" row kind url model key answer listed rc
   row="$(ai_row "$id")"
   [ -n "$row" ] || die "no AI source called $id. See agentnv ai list"
   kind="$(print -r -- "$row" | cut -f3)"
   url="$(print -r -- "$row" | cut -f4)"
   model="$(print -r -- "$row" | cut -f5)"
+  if [ "$kind" = copilot ]; then
+    ai_set use copilot
+    if [ -t 0 ]; then
+      ai_signin || print -r -- "Choose this again to retry."
+    fi
+    print -r -- "AI autocomplete now uses $(ai_name)."
+    return
+  fi
   if [ "$url" = ask ]; then
     [ -n "$ai_url" ] || ai_url="$(ai_get "url_$id")"
     if [ -t 0 ]; then
@@ -139,37 +166,45 @@ ai_use() {
     [ -n "$ai_url" ] || die "it needs a URL: --url <its chat/completions URL>"
     ai_set "url_$id" "$ai_url"
   fi
+  if [ -t 0 ]; then
+    print -rn -- "API key (hidden; Enter keeps the saved one, or none if it needs none): "
+    read -rs key
+    print -r -- ""
+  else
+    IFS= read -r key
+  fi
+  [ -z "$key" ] || ai_set "key_$id" "$key"
+  key="$(ai_get "key_$id")"
   if [ "$kind" = compatible ]; then
     [ -n "$ai_model" ] || ai_model="$(ai_get "model_$id")"
     [ -n "$ai_model" ] || { [ "$model" = ask ] || ai_model="$model"; }
     if [ -t 0 ]; then
-      print -rn -- "Model [$ai_model]: "
-      read -r answer
-      ai_model="${answer:-$ai_model}"
+      listed="$(ai_models "$(ai_get "url_$id" | grep . || print -r -- "$url")" "$key")"
+      if [ -n "$listed" ]; then
+        answer="$(print -r -- "$listed" | fzf --height=~20 --reverse --no-info --query="$ai_model" --prompt="model> ")" || return 0
+        ai_model="$answer"
+      else
+        print -rn -- "Model [$ai_model]: "
+        read -r answer
+        ai_model="${answer:-$ai_model}"
+      fi
     fi
     [ -n "$ai_model" ] || die "it needs a model: --model <name>"
     ai_set "model_$id" "$ai_model"
   elif [ -n "$ai_model" ]; then
     ai_set "model_$id" "$ai_model"
   fi
-  if [ "$kind" = copilot ]; then
-    ai_set use copilot
-    if [ -t 0 ]; then
-      print -rn -- "Copilot's free tier needs a free GitHub sign-in, which can expire. Sign in now? (Y/n) "
-      read -r answer
-      [[ "$answer" == [nN]* ]] || nvim "+Copilot auth"
-    fi
-  else
-    if [ -t 0 ]; then
-      print -rn -- "API key (hidden; Enter keeps the saved one, or none if it needs none): "
-      read -rs key
-      print -r -- ""
-    else
-      IFS= read -r key
-    fi
-    [ -z "$key" ] || ai_set "key_$id" "$key"
-    ai_set use "$id"
+  rc=0
+  if [ -z "$no_check" ]; then
+    "$lib/ai-test" "$id"
+    rc=$?
   fi
+  # A refused key isn't worth switching to; anything else may just be temporary.
+  if [ "$rc" = 2 ]; then
+    print -r -- "AI autocomplete stays on $(ai_name). Choose this again with another key."
+    return 1
+  fi
+  ai_set use "$id"
   print -r -- "AI autocomplete now uses $(ai_name)."
 }
 
@@ -199,13 +234,21 @@ wizard() {
     : # it's what you're looking at
   elif [ -z "$TMUX" ] && [ -n "$(tmux -L projects list-clients 2>/dev/null)" ]; then
     rows+=("continue${tab}Show what's open")
-  elif [ -z "$(tmux -L projects list-clients 2>/dev/null)" ] && [ -s "$store/.open" ]; then
-    open="${(j:, :)${(f)"$(<"$store/.open")"}}"
-    rows+=("continue${tab}Continue where you left off ($open)")
+  elif [ -z "$(tmux -L projects list-clients 2>/dev/null)" ]; then
+    # Only what still exists; the agentnv tab alone isn't somewhere you left off.
+    local name left=()
+    if [ -s "$store/.open" ]; then
+      for name in ${(f)"$(<"$store/.open")"}; do
+        [ "$name" != agentnv ] || continue
+        if [ -f "$store/$name" ] || [ -s "$store/.tabs/$name/tabs" ]; then
+          left+=("$name")
+        fi
+      done
+    fi
+    [ "${#left}" -eq 0 ] || rows+=("continue${tab}Continue where you left off (${(j:, :)left})")
   fi
   rows+=(
     "open${tab}Open project"
-    "shell${tab}Open a shell"
     "ai${tab}AI autocomplete ($(ai_name))"
     "rename${tab}Rename a project"
     "delete${tab}Delete a project"
@@ -213,6 +256,7 @@ wizard() {
     "refresh${tab}Refresh (load changes, keep everything open)"
     "update${tab}Update"
     "uninstall${tab}Uninstall"
+    "exit${tab}Exit"
   )
   local pick
   pick="$(print -rl -- "${rows[@]}" | fzf --delimiter="$tab" --with-nth=2 --height=~15 --reverse --no-info --prompt="agentnv> ")" || return 0
@@ -227,7 +271,7 @@ if [ -z "$cmd" ]; then
   # Back to the menu after anything that doesn't lead into the workspace. Esc leaves.
   while true; do
     cmd="$(wizard)"
-    [ -n "$cmd" ] || exit 0
+    [ -n "$cmd" ] && [ "$cmd" != exit ] || exit 0
     case "$cmd" in
       ai | rename | delete | folder | refresh | update) "$self" "$cmd" ;;
       open)
@@ -359,6 +403,18 @@ case "$cmd" in
       *) ;;
     esac
     case "$args[1]" in
+      signin) ai_signin ;;
+      test)
+        [ -n "$args[2]" ] && id="$args[2]" || id="$(ai_get use)"
+        id="${id:-copilot}"
+        if [ "$id" = copilot ]; then
+          AGENTNV_COPILOT_STATUS=1 nvim --headless -c "luafile $lib/copilot-signin.lua"
+        elif [ "$id" = off ]; then
+          print -r -- "AI autocomplete is off."
+        else
+          exec "$lib/ai-test" "$id"
+        fi
+        ;;
       list)
         print -r -- "Now: $(ai_name)"
         grep -v '^#' "$lib/ai-providers.tsv" | while IFS=$'\t' read -r id label kind url model; do

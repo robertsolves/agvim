@@ -84,6 +84,9 @@ function M.minuet_opts()
     -- and then nothing would show.
     throttle = 0,
     debounce = 300,
+    -- Its default of 3 is three paid requests per suggestion for some services, and they
+    -- share a temp file that the first to finish can delete from under the others.
+    n_completions = 1,
     provider_options = { [name] = options },
     -- Also while the completion menu is open, which is most of the time you're typing.
     virtualtext = { auto_trigger_ft = { "*" }, keymap = keys, show_on_completion_menu = true },

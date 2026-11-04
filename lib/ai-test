@@ -1,0 +1,76 @@
+#!/bin/zsh
+# ai-test <source>: sends one tiny request with the saved key and says plainly whether
+# it works. The key goes to curl on stdin, so it's never in a command line, and it's
+# blanked from anything shown. Exits 0 works, 2 key refused, 3 can't connect or the
+# service isn't running, 4 reached it but it refused the request for another reason.
+lib="${0:A:h}"
+file=~/.config/agentnv/ai
+id="$1"
+row="$(awk -F'\t' -v id="$id" '$1 == id' "$lib/ai-providers.tsv")"
+[ -n "$row" ] || { print -r -- "No AI source called $id."; exit 1; }
+get() { [ -f "$file" ] && sed -n "s/^$1=//p" "$file" | tail -1; }
+kind="$(print -r -- "$row" | cut -f3)"
+key="$(get "key_$id")"
+url="$(get "url_$id")"
+[ -n "$url" ] || url="$(print -r -- "$row" | cut -f4)"
+model="$(get "model_$id")"
+[ -n "$model" ] || model="$(print -r -- "$row" | cut -f5)"
+prompt='"messages":[{"role":"user","content":"Say ok"}]'
+case "$kind" in
+  compatible | openai)
+    [ "$url" != - ] || url=https://api.openai.com/v1/chat/completions
+    header="Authorization: Bearer $key"
+    body="{\"model\":\"$model\",$prompt}"
+    ;;
+  claude)
+    [ "$url" != - ] || url=https://api.anthropic.com/v1/messages
+    header="x-api-key: $key"
+    extra='header = "anthropic-version: 2023-06-01"'
+    body="{\"model\":\"$model\",\"max_tokens\":5,$prompt}"
+    ;;
+  gemini)
+    [ "$url" != - ] || url=https://generativelanguage.googleapis.com/v1beta/models
+    url="$url/${model}:generateContent"
+    header="x-goog-api-key: $key"
+    body='{"contents":[{"role":"user","parts":[{"text":"Say ok"}]}]}'
+    ;;
+  deepseek)
+    [ "$url" != - ] || url=https://api.deepseek.com/beta/completions
+    header="Authorization: Bearer $key"
+    body="{\"model\":\"$model\",\"prompt\":\"def \",\"max_tokens\":5}"
+    ;;
+  codestral)
+    [ "$url" != - ] || url=https://codestral.mistral.ai/v1/fim/completions
+    header="Authorization: Bearer $key"
+    body="{\"model\":\"$model\",\"prompt\":\"def \",\"max_tokens\":5}"
+    ;;
+  *)
+    print -r -- "This source doesn't use a key."
+    exit 1
+    ;;
+esac
+out="$(mktemp)"
+trap 'rm -f "$out"' EXIT
+code="$(printf 'header = "%s"\nheader = "content-type: application/json"\n%s\n' "$header" "$extra" |
+  curl -sS -m 30 -o "$out" -w '%{http_code}' -K - -X POST -d "$body" "$url" 2>/dev/null)"
+message="$(sed -nE 's/.*"(message|detail|error)"[[:space:]]*:[[:space:]]*"([^"]*)".*/\2/p' "$out" | head -1 | cut -c1-160)"
+[ -z "$key" ] || message="${message//$key/...}"
+case "$code" in
+  2*) print -r -- "It works: it answered with this key and model."; exit 0 ;;
+  401 | 403) print -r -- "It refused this key. ${message}"; exit 2 ;;
+  000)
+    print -r -- "Couldn't connect to $url."
+    [ "$id" != freechain ] || print -r -- "Start it first: docker compose up -d in your free-llm-chain folder."
+    exit 3
+    ;;
+  429) print -r -- "It knows this key, but it's out of quota or credit right now. ${message}"; exit 4 ;;
+  *)
+    # Gemini answers a bad key with a 400.
+    if print -r -- "$message" | grep -qiE 'api[ _-]?key'; then
+      print -r -- "It refused this key. ${message}"
+      exit 2
+    fi
+    print -r -- "It answered with an error ($code). ${message}"
+    exit 4
+    ;;
+esac
