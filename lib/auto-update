@@ -1,0 +1,27 @@
+#!/bin/zsh
+# auto-update: when AgVim opens, moves this clone to the newest release, if there's one
+# it doesn't have, and installs it. Exits 0 if it updated, so agvim can start again as the
+# new version; anything else just opens what's here. It follows releases (version tags),
+# not main, so nobody gets unfinished work, and it never touches a clone with changes of
+# its own, one on another branch, or one that's ahead. Offline, it gives up in seconds.
+# `agvim autoupdate off` turns it off.
+repo="${0:A:h:h}"
+g() { git -C "$repo" "$@"; }
+
+[ ! -f ~/.config/agvim/auto-update-off ] || exit 1
+[ -d "$repo/.git" ] || exit 1
+[ "$(g rev-parse --abbrev-ref HEAD 2>/dev/null)" = main ] || exit 1
+perl -e 'alarm 6; exec @ARGV' git -C "$repo" fetch -q origin --tags 2>/dev/null || exit 1
+latest="$(g tag -l 'v*.*.*' --sort=-v:refname | head -1)"
+[ -n "$latest" ] || exit 1
+g merge-base --is-ancestor "$latest" HEAD && exit 1 # has it already
+# Neovim rewrites its plugin lockfile as it runs; the repo's copy decides the versions.
+g checkout -- nvim/lazy-lock.json 2>/dev/null
+[ -z "$(g status --porcelain)" ] || exit 1
+print -r -- "Updating AgVim to $latest..."
+g merge -q --ff-only "$latest" 2>/dev/null || { print -r -- "Couldn't update, so opening this version."; exit 1; }
+if ! AGVIM_NO_LAUNCH=1 "$repo/install.sh" --no-brew --no-tools >/dev/null 2>&1; then
+  print -r -- "The update didn't install fully. agvim update tries again."
+fi
+print -r -- "Updated to $latest."
+exit 0

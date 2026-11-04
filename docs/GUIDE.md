@@ -80,7 +80,8 @@ agvim ai signin              # sign in to Copilot
 agvim folder                 # where your projects are saved, in Finder
 agvim roots add ~/work       # where the project picker looks
 agvim terminal iTerm         # which terminal the icon uses (auto: choose for me)
-agvim update                 # the latest version, installed again
+agvim update                 # the latest version and tools, installed again
+agvim autoupdate off         # stop updating to new releases when it opens
 agvim uninstall              # remove it all, after asking
 agvim version
 ```
@@ -88,6 +89,10 @@ agvim version
 `add` and `new` take `--no-open` to save a project without opening anything.
 
 The project picker also lists folders under `~/Projects`, `~/Developer`, `~/code` and `~/Desktop`. To change that, use `agvim roots`.
+
+## Updates
+
+AgVim checks for a new release each time it opens, and updates itself before it starts. It waits a few seconds at most, so being offline only means opening the version you have. It follows releases, not the latest commits, and leaves a clone with your own changes alone. `agvim update` does the same on demand and also updates your tools. `agvim autoupdate off` turns the automatic check off.
 
 ## Uninstall
 
@@ -102,6 +107,7 @@ The `agvim` tab is this repo. Ask any agent there to change AgVim: `AGENTS.md`, 
 ```sh
 tests/run.sh      # the tests, on separate tmux servers
 macos/bundle.sh   # dist/AgVim.app and dist/AgVim.dmg
+agvim release 1.1.0   # tests, then a version tag; GitHub builds and publishes it
 ```
 
 From a clone, `./install.sh` installs that clone. `--no-brew` skips Homebrew and `--no-tools` skips Neovim's tools. Coding agents set up from [AGENTS.md](../AGENTS.md).

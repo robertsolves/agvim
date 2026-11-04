@@ -35,7 +35,9 @@
 #   agvim folder                     show where your projects are saved
 #   agvim roots [add|remove folder]  where the project picker looks for folders
 #   agvim terminal [app|auto]        which terminal the icon and Finder use
-#   agvim update                     the latest version, installed again
+#   agvim update                     the latest version and tools, installed again
+#   agvim autoupdate [on|off]        update to new releases when it opens (on by default)
+#   agvim release <version>          publish a new version (from a clone, for maintainers)
 #   agvim uninstall [--brew]         remove it all, after asking
 #   agvim version
 #   agvim help
@@ -265,6 +267,15 @@ wizard() {
 
 cmd="$1"
 [ $# -gt 0 ] && shift
+# Opening AgVim: get the newest release first, then start again as that version. Not when
+# it's open already, as it would only change under you.
+case "$cmd" in
+  "" | continue | open)
+    if [ -z "$AGVIM_UPDATED$AGVIM_POPUP" ] && [ -z "$(tmux -L projects list-clients 2>/dev/null)" ] && "$lib/auto-update"; then
+      AGVIM_UPDATED=1 exec "$self" "$cmd" "$@"
+    fi
+    ;;
+esac
 if [ -z "$cmd" ]; then
   [ -t 0 ] || { help; exit 0; } # nobody there to ask
   "$lib/banner"
@@ -481,9 +492,17 @@ case "$cmd" in
     ;;
   update)
     # Saved projects are gitignored, so an update leaves them alone. Neovim rewrites its
-    # plugin lockfile as it runs; the repo's copy decides the versions.
+    # plugin lockfile as it runs; the repo's copy decides the versions. The newest release,
+    # or main while there are none.
     git -C "$repo" checkout -- nvim/lazy-lock.json 2>/dev/null
-    if ! git -C "$repo" pull --ff-only; then
+    git -C "$repo" fetch -q origin --tags 2>/dev/null
+    latest="$(git -C "$repo" tag -l 'v*.*.*' --sort=-v:refname | head -1)"
+    if [ -n "$latest" ]; then
+      git -C "$repo" merge-base --is-ancestor "$latest" HEAD || git -C "$repo" merge --ff-only "$latest"
+    else
+      git -C "$repo" pull --ff-only
+    fi
+    if [ $? -ne 0 ]; then
       print -r -- "agvim: couldn't update $repo. Nothing was installed. Your own changes there may be in the way: see git status." >&2
       exit 1
     fi
@@ -495,10 +514,21 @@ case "$cmd" in
       read -r _
     fi
     ;;
+  autoupdate)
+    off=~/.config/agvim/auto-update-off
+    case "$1" in
+      on) rm -f "$off" ;;
+      off) mkdir -p "${off:h}"; touch "$off" ;;
+      "") ;;
+      *) die "usage: agvim autoupdate [on|off]" ;;
+    esac
+    [ -f "$off" ] && print -r -- "Auto-update is off." || print -r -- "Auto-update is on."
+    ;;
+  release) exec "$repo/macos/release.sh" "$@" ;;
   uninstall) exec "$repo/uninstall.sh" "$@" ;;
   version | -v | --version)
     "$lib/banner"
-    print -r -- "version $(git -C "$repo" log -1 --format=%h 2>/dev/null || print unknown)"
+    print -r -- "version $(git -C "$repo" describe --tags --always 2>/dev/null || print unknown)"
     ;;
   help | -h | --help) help ;;
   _p | _project | _projects | _open-project | _tab | _gd) exec "$lib/${cmd#_}" "$@" ;;

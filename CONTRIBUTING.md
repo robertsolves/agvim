@@ -27,4 +27,8 @@ The `agvim` tab is your clone, so you can change AgVim from inside it, with any 
 - Anything `install.sh` adds, `uninstall.sh` must remove.
 - Run `shellcheck` on `install.sh`, `uninstall.sh` and `macos/*.sh`.
 
+## Release a new version
+
+Run `agvim release 1.1.0` from a clean, pushed `main`. It runs the tests, asks, and pushes a version tag. GitHub then builds `AgVim.dmg` and publishes the release, and everyone's AgVim updates to it the next time it opens. The website deploys by itself when `docs/` changes on `main`.
+
 By contributing, you agree that your work is released under the [MIT License](LICENSE).

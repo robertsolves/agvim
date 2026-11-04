@@ -19,6 +19,7 @@ typeset -A expect=(
   ai-suggest 'request: Bearer test-key-123 model=test-model|on screen: 1|in the file: 1'
   ai-providers 'claude key-sent=1 shown=1 in-file=1|openai key-sent=1 shown=1 in-file=1|gemini key-sent=1 shown=1 in-file=1|deepseek key-sent=1 shown=1 in-file=1|mistral key-sent=1 shown=1 in-file=1|groq key-sent=1 shown=1 in-file=1'
   site 'title: 51|description: 15[0-9]|canonical = og:url: yes|structured data: valid|every FAQ answer is on the page: yes|sitemap lists the page: yes|files exist: yes|side by side: 0'
+  autoupdate 'clean clone moved to: v1.1.0|message: Updated to v1.1.0|new version runs: v1.1.0|your changes kept: 1|off stays on: v1.0.0|offline still opens: yes|already current stays: v1.1.0'
   up 'brew upgrade neovim|brew upgrade --cask kitty|MasonToolsUpdateSync|install rc=0'
 )
 # Whatever a test left behind: only its own servers, found through its own folder.
@@ -36,7 +37,7 @@ clean_up() {
 
 failed=0
 tests=("$@")
-[ $# -gt 0 ] || tests=(site full app menu name bottom cli close ai ai-suggest ai-providers up)
+[ $# -gt 0 ] || tests=(site full app menu name bottom cli close ai ai-suggest ai-providers autoupdate up)
 for t in "${tests[@]}"; do
   [ -f "$here/$t.sh" ] && [ -n "$expect[$t]" ] || { print -r -- "FAIL $t (no such test)"; failed=1; continue; }
   # Bounded, so a test that hangs can't stop the rest. Its servers end with it.

@@ -1,0 +1,18 @@
+# Builds AgVim.dmg and publishes a GitHub release when `agvim release` pushes a version tag.
+name: Release
+on:
+  push:
+    tags: ["v*.*.*"]
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build AgVim.dmg
+        run: AGVIM_VERSION="${GITHUB_REF_NAME#v}" macos/bundle.sh
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/AgVim.dmg --title "AgVim ${GITHUB_REF_NAME#v}" --generate-notes --verify-tag

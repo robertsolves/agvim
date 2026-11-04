@@ -1,0 +1,38 @@
+# Checks and deploys the website (docs/) whenever it changes on main.
+name: Website
+on:
+  push:
+    branches: [main]
+    paths: ["docs/**", "tests/site.sh", ".github/workflows/site.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get install -y zsh
+      - name: Check the page
+        run: |
+          out="$(zsh tests/site.sh)"
+          echo "$out"
+          echo "$out" | grep -q 'canonical = og:url: yes'
+          echo "$out" | grep -q 'structured data: valid'
+          echo "$out" | grep -q 'every FAQ answer is on the page: yes'
+          echo "$out" | grep -q 'sitemap lists the page: yes'
+          echo "$out" | grep -q 'files exist: yes'
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -9,6 +9,7 @@ AgVim runs on macOS only. It is MIT licensed. Setup installs what's missing once
 - Does AgVim work on Windows or Linux? No. AgVim is macOS only.
 - Do I need to install Neovim or tmux first? No. Setup installs what's missing once, including Homebrew, kitty, git, Neovim, tmux and lazygit. Tools you already have are kept and updated to their latest versions.
 - What happens when I close a project? Its tabs are saved and everything running in them stops, which frees the memory. When you open it again, the tabs come back, and agents with a resume command continue their last conversation. Other programs, such as dev servers, come back as a shell for you to restart.
+- How does AgVim update? It checks for a new release each time it opens and updates itself before starting. Offline, it opens the version you have after a few seconds at most. You can turn this off with agvim autoupdate off.
 
 ## Install
 

@@ -18,6 +18,9 @@ PAYLOAD="$APP/Contents/Resources/agvim"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$PAYLOAD"
 cp "$ROOT/macos/app/Info.plist" "$APP/Contents/Info.plist"
+if [ -n "${AGVIM_VERSION:-}" ]; then
+  plutil -replace CFBundleShortVersionString -string "$AGVIM_VERSION" "$APP/Contents/Info.plist"
+fi
 cp "$ROOT/macos/app/launcher" "$APP/Contents/MacOS/AgVim"
 cp "$ROOT/macos/finder/AppIcon.icns" "$APP/Contents/Resources/"
 if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then

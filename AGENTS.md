@@ -39,8 +39,9 @@ You are installing this setup on the user's Mac, or changing it. Follow the step
 - `bin/agvim` is the only command on PATH: every feature is a subcommand there, listed in its help and `docs/GUIDE.md`. Folders default to `.` and projects to the current one, with `-p` to pick; `lib/` holds the scripts behind it, and tmux, Neovim and Finder call them as `~/.local/bin/agvim _<script>`.
 - Edit files in the repo, not in `~/.config/nvim`. That path is a link into the repo, so both are the same files.
 - Keys are listed in `nvim/README.md`. Add new keys there when you add them to `nvim/lua/mappings.lua` or a plugin spec.
-- The website is `docs/index.html` (GitHub Pages, from `docs/` on `main`). Add new dependencies to its lists.
+- The website is `docs/index.html`, deployed by `.github/workflows/site.yml` when `docs/` changes on `main`. Add new dependencies to its lists.
 - AI autocomplete sources: add a row to `lib/ai-providers.tsv`. OpenAI-compatible services need no code.
+- Releases: `agvim release X.Y.Z` (`macos/release.sh`, `.github/workflows/release.yml`). Each launch updates to the newest release (`lib/auto-update`), so changes reach people only when released.
 - Agents: add a row to `lib/agents.tsv` (key, command, how to continue, where to get it). Only use a resume command you've confirmed in its docs; otherwise `-`.
 - Language servers: add to `nvim/lua/configs/lspconfig.lua` and to the Mason list in `nvim/lua/plugins/lsp.lua`. Parsers: `nvim/lua/configs/treesitter_parsers.lua`.
 - `nvim/local-plugins/nvim-color-line-numbers-by-mode` is a copy of github.com/dev-cetera/nvim-color-line-numbers-by-mode with fixes. Edit it here.

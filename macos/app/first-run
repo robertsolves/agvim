@@ -31,7 +31,7 @@ AGVIM_NO_LAUNCH=1 "$dir/install.sh" ${=AGVIM_INSTALL_ARGS} || stop "install.sh f
 if [ ! -d "$dir/.git" ]; then
   git -C "$dir" init -q -b main
   git -C "$dir" remote add origin "$url"
-  if git -C "$dir" fetch -q --depth 1 origin main 2>/dev/null; then
+  if git -C "$dir" fetch -q origin main --tags 2>/dev/null; then
     git -C "$dir" reset -q --hard origin/main
     git -C "$dir" branch -q -u origin/main 2>/dev/null
   else
