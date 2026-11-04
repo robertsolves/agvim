@@ -1,5 +1,5 @@
 #!/bin/zsh
-# Saved projects, behind most of the agentnv command (arguments are its, resolved). A project is a name and one or more folders: one file
+# Saved projects, behind most of the agvim command (arguments are its, resolved). A project is a name and one or more folders: one file
 # in saved-projects/ of this repo (gitignored), one folder per line. Its tmux
 # session has "nvim", lazygit and "shell 1" in the first folder, then one Neovim tab per
 # other folder. Folders themselves are never touched.
@@ -22,8 +22,8 @@
 #                                     gone when you close it
 #   close <name> [bar window]         save it, stop it, close its tab
 #   save-all                          save every open project and which are open
-#   finder-new <folder>...            Finder's New AgentNV Project: asks for a name
-#   finder-add <folder>...            Finder's Add to AgentNV Project: asks which one
+#   finder-new <folder>...            Finder's New AgVim Project: asks for a name
+#   finder-add <folder>...            Finder's Add to AgVim Project: asks which one
 #
 # Used by p, open-project, projects, the bar and the Finder extension in macos/finder/.
 # --window also brings the terminal to the front, or opens one.
@@ -43,7 +43,7 @@ while IFS=$'\t' read -r key agent again where; do
 done <"${0:A:h}/agents.tsv"
 
 die() {
-  print -r -- "agentnv: $1" >&2
+  print -r -- "agvim: $1" >&2
   exit 1
 }
 
@@ -237,7 +237,7 @@ refresh() {
   local tty id file count=0
   tmux list-panes -a -F '#{pane_tty}	#{pane_id}' 2>/dev/null | while IFS=$'\t' read -r tty id; do
     [ "$(program_on "$tty")" = nvim ] || continue
-    file="$state/agentnv-refresh-${id#%}.vim"
+    file="$state/agvim-refresh-${id#%}.vim"
     tmux send-keys -t "$id" C-\\ C-n
     tmux send-keys -t "$id" -l ":silent! wall | set sessionoptions-=terminal sessionoptions-=blank | mksession! $file | restart source $file"
     tmux send-keys -t "$id" Enter
@@ -264,7 +264,7 @@ save_all() {
 
 close() {
   check_name "$1"
-  [ "$1" != agentnv ] || return 0 # always stays open: lib/projects
+  [ "$1" != agvim ] || return 0 # always stays open: lib/projects
   if [ -f "$store/$1" ]; then
     save "$1"
   else
@@ -285,7 +285,7 @@ new_shell() {
   show "Shell $n"
 }
 
-# Opens project $1, unless asked just to save it (agentnv --no-open).
+# Opens project $1, unless asked just to save it (agvim --no-open).
 show() {
   [ -n "$AW_NO_OPEN" ] && return 0
   "$lib/open-project" "${window[@]}" --project "$1"
@@ -298,7 +298,7 @@ new() {
     name="$(clean "$2")"
     [ -n "$name" ] || die "that name has nothing usable in it"
     if [ -f "$store/$name" ]; then
-      grep -qxF -- "$dir" "$store/$name" || die "$name exists already: use agentnv add"
+      grep -qxF -- "$dir" "$store/$name" || die "$name exists already: use agvim add"
     else
       mkdir -p "$store"
       print -r -- "$dir" >"$store/$name"
@@ -349,10 +349,10 @@ ask() {
 
 finder_new() {
   local name dir
-  name="$(ask 'return text returned of (display dialog "New project name:" default answer (item 1 of argv) with title "New AgentNV Project")' "${1:A:t}")" || return 0
+  name="$(ask 'return text returned of (display dialog "New project name:" default answer (item 1 of argv) with title "New AgVim Project")' "${1:A:t}")" || return 0
   name="$(clean "$name")"
   if [ -z "$name" ] || { [ -f "$store/$name" ] && ! grep -qxF -- "$(folder_of "$1")" "$store/$name"; }; then
-    ask 'display alert "Could not create that project" message (item 1 of argv)' "A project called \"$name\" exists already, or the name is empty. Use Add to AgentNV Project, or pick another name." >/dev/null
+    ask 'display alert "Could not create that project" message (item 1 of argv)' "A project called \"$name\" exists already, or the name is empty. Use Add to AgVim Project, or pick another name." >/dev/null
     return 0
   fi
   window=(--window)
@@ -369,7 +369,7 @@ finder_add() {
     finder_new "$@"
     return
   fi
-  name="$(ask 'set chosen to choose from list (items of argv) with title "Add to AgentNV Project" with prompt "Add to which project?"
+  name="$(ask 'set chosen to choose from list (items of argv) with title "Add to AgVim Project" with prompt "Add to which project?"
   if chosen is false then error number -128
   return item 1 of chosen' "${names[@]}")" || return 0
   window=(--window)
@@ -387,15 +387,15 @@ if [ "$1" = --window ]; then
 fi
 
 case "$cmd" in
-  new) [ -n "$1" ] || die "usage: agentnv new <folder> [name]"; new "$@" ;;
-  add) [ -n "$2" ] || die "usage: agentnv add <name> <folder>"; add "$@" ;;
+  new) [ -n "$1" ] || die "usage: agvim new <folder> [name]"; new "$@" ;;
+  add) [ -n "$2" ] || die "usage: agvim add <name> <folder>"; add "$@" ;;
   ensure-self)                            # for projects: this repo, the first tab
     mkdir -p "$store"
-    print -r -- "${0:A:h:h}" >"$store/agentnv"
+    print -r -- "${0:A:h:h}" >"$store/agvim"
     ;;
   remove)
     check_name "$1"
-    [ "$1" != agentnv ] || die "agentnv always stays: it's where you update it from"
+    [ "$1" != agvim ] || die "agvim always stays: it's where you update it from"
     [ -f "$store/$1" ] || die "no project called $1"
     gone="$(folder_of "$2")"
     grep -vxF -- "$gone" "$store/$1" >"$store/.tmp"
@@ -411,7 +411,7 @@ case "$cmd" in
     ;;
   delete)
     check_name "$1"
-    [ "$1" != agentnv ] || die "agentnv always stays: it's where you update it from"
+    [ "$1" != agvim ] || die "agvim always stays: it's where you update it from"
     # If it's open it closes first; a project you've forgotten shouldn't keep running.
     tmux kill-session -t "=$1" 2>/dev/null
     win="$(bar list-windows -t '=projects' -F '#{window_name}	#{window_id}' 2>/dev/null | awk -F'\t' -v n="$1" '$1 == n { print $2 }')"
@@ -427,7 +427,7 @@ case "$cmd" in
     ;;
   names)
     for f in "$store"/*(N.:t); do
-      [ "$f" = agentnv ] || print -r -- "$f"
+      [ "$f" = agvim ] || print -r -- "$f"
     done
     ;;
   refresh) refresh ;;
@@ -440,15 +440,15 @@ case "$cmd" in
     ;;
   shell) new_shell ;;
   close) close "$1" "$2" ;;
-  close-tab)                              # agentnv close: finds the bar's tab itself
+  close-tab)                              # agvim close: finds the bar's tab itself
     check_name "$1"
-    [ "$1" != agentnv ] || die "agentnv always stays: it's where you update it from"
+    [ "$1" != agvim ] || die "agvim always stays: it's where you update it from"
     [ -f "$store/$1" ] || tmux has-session -t "=$1" 2>/dev/null || die "no project called $1"
     close "$1" "$(bar list-windows -t '=projects' -F '#{window_name}	#{window_id}' 2>/dev/null | awk -F'\t' -v n="$1" '$1 == n { print $2 }')"
     ;;
   rename)
     check_name "$1"
-    [ "$1" != agentnv ] || die "agentnv keeps its name"
+    [ "$1" != agvim ] || die "agvim keeps its name"
     new_name="$(clean "$2")"
     [ -n "$new_name" ] || die "that name has nothing usable in it"
     [ ! -e "$store/$new_name" ] && ! tmux has-session -t "=$new_name" 2>/dev/null || die "$new_name exists already"

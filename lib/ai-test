@@ -4,7 +4,7 @@
 # blanked from anything shown. Exits 0 works, 2 key refused, 3 can't connect or the
 # service isn't running, 4 reached it but it refused the request for another reason.
 lib="${0:A:h}"
-file=~/.config/agentnv/ai
+file=~/.config/agvim/ai
 id="$1"
 row="$(awk -F'\t' -v id="$id" '$1 == id' "$lib/ai-providers.tsv")"
 [ -n "$row" ] || { print -r -- "No AI source called $id."; exit 1; }

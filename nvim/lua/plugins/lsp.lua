@@ -63,7 +63,7 @@ return {
         for _, version in ipairs { "3.14", "3.13", "3.12" } do
           local python = vim.fn.exepath("python" .. version)
           if python ~= "" then
-            local shim = vim.fn.stdpath "cache" .. "/agentnv-python"
+            local shim = vim.fn.stdpath "cache" .. "/agvim-python"
             vim.fn.mkdir(shim, "p")
             vim.uv.fs_unlink(shim .. "/python3")
             vim.uv.fs_symlink(python, shim .. "/python3")

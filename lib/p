@@ -1,12 +1,12 @@
 #!/bin/zsh
-# agentnv open: fuzzy-pick a project to open, in this order:
+# agvim open: fuzzy-pick a project to open, in this order:
 #   New project from a folder...   walk every folder on the computer, name it
 #   Add a folder to <current>...   the same, into the project you're in
 #   your saved projects            (bin/project) Ctrl-X forgets the one under the cursor
 #   other project folders          folders with .git, pubspec.yaml, Cargo.toml,
 #                                  Package.swift, pyproject.toml or package.json, up
 #                                  to 4 levels under the roots: one folder per line
-#                                  in ~/.config/agentnv/roots, else ~/Projects,
+#                                  in ~/.config/agvim/roots, else ~/Projects,
 #                                  ~/Developer, ~/code and ~/Desktop
 # Type to filter, Enter to open, Esc to cancel.
 # While walking folders: Enter or double-click goes in, ../ goes up, the top row
@@ -29,7 +29,7 @@ rows() {
     print -r -- "open:${f:t}${tab}${f:t}  (${(j:, :)${(f)"$(sed "s#^$HOME#~#" "$f")"}})"
   done
 
-  local roots_file=~/.config/agentnv/roots roots
+  local roots_file=~/.config/agvim/roots roots
   if [ -f "$roots_file" ]; then
     roots=(${(f)"$(sed "s#^~#$HOME#" "$roots_file")"})
   else

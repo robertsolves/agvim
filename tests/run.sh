@@ -4,17 +4,17 @@
 # every line it expects; logs stay in the folder this prints.
 here="${0:A:h}"
 root="${here:h}"
-logs="$(mktemp -d /tmp/agentnv-tests.XXXX)"
+logs="$(mktemp -d /tmp/agvim-tests.XXXX)"
 "$root/macos/bundle.sh" --app-only >/dev/null || { print -r -- "couldn't build the app"; exit 1; }
 
 typeset -A expect=(
-  full 'guard message: 1|^stopped|stub programs alive: 0|MARK-SHELL on screen: [1-9]|lazygit|agentnv-lazy|deleted '
-  app 'first run took|^ agentnv|^  lazygit|click icon, running'
+  full 'guard message: 1|^stopped|stub programs alive: 0|MARK-SHELL on screen: [1-9]|lazygit|agvim-lazy|deleted '
+  app 'first run took|^ agvim|^  lazygit|click icon, running'
   menu 'open .*saved-projects|EXIT=0|Updated\.|couldn.t update|rc=1'
   name 'build server=1|build server named=1|while a program'
   bottom 'with few tabs: +2 -> +3'
   cli 'is now live|\(running\)|no such folder|not in a project'
-  close 'reopened:.*lazygit.*keep me.*c,|Rename a project|asks: 1|window-style back: bg|take it out of A|back at menu after rename: 1|rename message shown|in picker: 1|back at menu after Esc in picker: 1|Esc at menu leaves, exit 0: 1|^AgentNV by Robert|continue while it exists: 1|open a shell row: 0|last row: . Exit|exit row leaves: 1|continue once deleted: 0'
+  close 'reopened:.*lazygit.*keep me.*c,|Rename a project|asks: 1|window-style back: bg|take it out of A|back at menu after rename: 1|rename message shown|in picker: 1|back at menu after Esc in picker: 1|Esc at menu leaves, exit 0: 1|^AgVim by Robert|continue while it exists: 1|open a shell row: 0|last row: . Exit|exit row leaves: 1|continue once deleted: 0'
   ai 'mode 600|key on screen: 0|url=http://localhost:9/v1/chat/completions model=m1 key=secret-custom|loaded minuet provider=openai_compatible accept fn=function|provider=claude url=nil model=claude-haiku-5-5 key=secret-claude-key|model=some/model key=secret-groq-key|use=off copilot=false minuet=false|use=copilot copilot=true minuet=false|no AI source called nope'
   ai-suggest 'request: Bearer test-key-123 model=test-model|on screen: 1|in the file: 1'
   ai-providers 'claude key-sent=1 shown=1 in-file=1|openai key-sent=1 shown=1 in-file=1|gemini key-sent=1 shown=1 in-file=1|deepseek key-sent=1 shown=1 in-file=1|mistral key-sent=1 shown=1 in-file=1|groq key-sent=1 shown=1 in-file=1'

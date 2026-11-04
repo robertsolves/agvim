@@ -1,26 +1,26 @@
 #!/usr/bin/env bash
-# Sets up agentnv on a Mac: projects as tabs in any terminal, each a tmux session
-# with Neovim, shells and agents as tabs; the `agentnv` command
-# and Finder's "New AgentNV Project" and "Add to AgentNV Project". Run `agentnv` in any
+# Sets up agvim on a Mac: projects as tabs in any terminal, each a tmux session
+# with Neovim, shells and agents as tabs; the `agvim` command
+# and Finder's "New AgVim Project" and "Add to AgVim Project". Run `agvim` in any
 # terminal to use it. uninstall.sh removes it all.
 # Safe to run again: it sets up what's missing and updates the tools already there.
 #
-#   curl -fsSL https://raw.githubusercontent.com/robertsolves/agentnv/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/robertsolves/agvim/main/install.sh | bash
 #   ./install.sh [--no-brew] [--no-tools]
 #
 #   --no-brew   skip Homebrew packages (install them yourself, see Brewfile)
 #   --no-tools  skip the headless Neovim plugin and parser install
 #
 # It installs whatever's missing, Homebrew included (that asks for your password).
-# Anything it would replace (~/.config/nvim, ~/.tmux.conf, a command called agentnv
+# Anything it would replace (~/.config/nvim, ~/.tmux.conf, a command called agvim
 # in ~/.local/bin) is moved aside to <name>.bak-<date>, never deleted.
-# Run from a curl pipe, it clones the repo to $AGENTNV_DIR
-# (default ~/.agentnv) first. Your config then links into that folder,
+# Run from a curl pipe, it clones the repo to $AGVIM_DIR
+# (default ~/.agvim) first. Your config then links into that folder,
 # so `git pull` there updates everything.
 
 set -euo pipefail
 
-REPO_URL=https://github.com/robertsolves/agentnv.git
+REPO_URL=https://github.com/robertsolves/agvim.git
 STAMP=$(date +%Y-%m-%d-%H%M%S)
 BREW=1
 TOOLS=1
@@ -54,7 +54,7 @@ if [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then
   here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 fi
 if [ -z "$here" ] || [ ! -f "$here/nvim/init.lua" ]; then
-  dir="${AGENTNV_DIR:-$HOME/.agentnv}"
+  dir="${AGVIM_DIR:-$HOME/.agvim}"
   if [ -d "$dir/.git" ]; then
     git -C "$dir" pull --ff-only
   else
@@ -64,9 +64,9 @@ if [ -z "$here" ] || [ ! -f "$here/nvim/init.lua" ]; then
 fi
 REPO="$here"
 "$REPO/lib/banner"
-# A first install ends by opening AgentNV. Installing again only updates.
+# A first install ends by opening AgVim. Installing again only updates.
 FRESH=0
-[ -e "$HOME/.local/bin/agentnv" ] || FRESH=1
+[ -e "$HOME/.local/bin/agvim" ] || FRESH=1
 
 # Links $2 to $1. Whatever was at $2 before is moved aside, not deleted.
 link() {
@@ -99,11 +99,11 @@ if [ "$BREW" = 1 ]; then
   # Cask only when missing: a font installed another way makes brew fail.
   ls ~/Library/Fonts/JetBrainsMonoNerdFont* /Library/Fonts/JetBrainsMonoNerdFont* >/dev/null 2>&1 ||
     brew install --cask font-jetbrains-mono-nerd-font
-  # AgentNV's windows open in kitty (lib/terminal, macos/kitty.conf).
+  # AgVim's windows open in kitty (lib/terminal, macos/kitty.conf).
   if [ ! -d /Applications/kitty.app ] && [ ! -d "$HOME/Applications/kitty.app" ]; then
     brew install --cask kitty
-    mkdir -p "$HOME/.config/agentnv"
-    touch "$HOME/.config/agentnv/installed-kitty"
+    mkdir -p "$HOME/.config/agvim"
+    touch "$HOME/.config/agvim/installed-kitty"
   fi
   # Only Homebrew's own copies: one installed another way updates itself.
   for cask in kitty font-jetbrains-mono-nerd-font; do
@@ -135,17 +135,42 @@ if [ -f "$kitty_conf" ] && grep -qx 'include agent-workspace.conf' "$kitty_conf"
   note "removed the agent-workspace include from $kitty_conf"
 fi
 
-step "The agentnv command"
+step "The agvim command"
 # Earlier versions linked each script and kept their settings elsewhere.
-for old in t p gd open-project project projects tab workspace; do
+for old in t p gd open-project project projects tab workspace agentnv; do
   if [[ "$(readlink "$HOME/.local/bin/$old" 2>/dev/null)" == */bin/"$old" ]]; then
     rm "$HOME/.local/bin/$old"
-    note "removed ~/.local/bin/$old (now agentnv)"
+    note "removed ~/.local/bin/$old (now agvim)"
   fi
 done
-if [ -d "$HOME/.config/agent-workspace" ] && [ ! -e "$HOME/.config/agentnv" ]; then
-  mv "$HOME/.config/agent-workspace" "$HOME/.config/agentnv"
-  note "moved ~/.config/agent-workspace to ~/.config/agentnv"
+for old in agent-workspace agentnv; do
+  if [ -d "$HOME/.config/$old" ] && [ ! -e "$HOME/.config/agvim" ]; then
+    mv "$HOME/.config/$old" "$HOME/.config/agvim"
+    note "moved ~/.config/$old to ~/.config/agvim"
+  fi
+done
+# Its name before: its tab becomes this one, and its app, Finder menu and icon go.
+store="$REPO/saved-projects"
+if [ -e "$store/agentnv" ] && [ ! -e "$store/agvim" ]; then
+  mv "$store/agentnv" "$store/agvim"
+  [ ! -d "$store/.tabs/agentnv" ] || mv "$store/.tabs/agentnv" "$store/.tabs/agvim"
+  for list in .open .active; do
+    [ ! -f "$store/$list" ] || sed -i '' 's/^agentnv$/agvim/' "$store/$list"
+  done
+  note "your agentnv tab is now agvim"
+fi
+old_finder="$HOME/Applications/agentnv Finder.app"
+if [ -d "$old_finder" ]; then
+  pluginkit -e ignore -i io.github.robertsolves.agentnv.finder.extension 2>/dev/null || true
+  pluginkit -r "$old_finder/Contents/PlugIns/agentnv-extension.appex" 2>/dev/null || true
+  pkill -f agentnv-extension 2>/dev/null || true
+  rm -rf "$old_finder" "$HOME/Library/Application Scripts/io.github.robertsolves.agentnv.finder.extension"
+  note "removed the old Finder menu"
+fi
+rm -rf "$HOME/Applications/AgentNV.app"
+if [ -L "$HOME/Desktop/AgentNV.app" ]; then
+  rm "$HOME/Desktop/AgentNV.app"
+  rm -f "$HOME/.config/agvim/desktop-icon" # so the new icon takes its place
 fi
 for script in "$REPO"/bin/*; do
   link "$script" "$HOME/.local/bin/$(basename "$script")"
@@ -153,44 +178,44 @@ done
 case ":$PATH:" in
   *":$HOME/.local/bin:"*) ;;
   *)
-    # So `agentnv` works in a new terminal. uninstall.sh removes the line.
-    if ! grep -qs '# agentnv$' "$HOME/.zshrc"; then
-      printf 'export PATH="$HOME/.local/bin:$PATH" # agentnv\n' >>"$HOME/.zshrc"
+    # So `agvim` works in a new terminal. uninstall.sh removes the line.
+    if ! grep -qs '# agvim$' "$HOME/.zshrc"; then
+      printf 'export PATH="$HOME/.local/bin:$PATH" # agvim\n' >>"$HOME/.zshrc"
       note "added ~/.local/bin to your PATH in ~/.zshrc"
     fi
     ;;
 esac
 
-step "Finder: New AgentNV Project and Add to AgentNV Project when you right-click a folder"
+step "Finder: New AgVim Project and Add to AgVim Project when you right-click a folder"
 rm -rf "$HOME/Library/Services/Open in Neovim.workflow" "$HOME/Library/Services/New Project.workflow" "$HOME/Library/Services/Add to Project.workflow" # earlier versions
 if "$REPO/macos/finder/build.sh" >/dev/null 2>&1; then
-  note "installed. If they don't show: System Settings > General > Login Items & Extensions > Finder, and turn on agentnv Finder."
+  note "installed. If they don't show: System Settings > General > Login Items & Extensions > Finder, and turn on agvim Finder."
 else
   warn "couldn't build it (Xcode Command Line Tools: xcode-select --install). Everything else works without it. To retry: $REPO/macos/finder/build.sh"
 fi
 
-step "The AgentNV app and its icon on your Desktop"
+step "The AgVim app and its icon on your Desktop"
 # Downloaded, it's in /Applications already. Otherwise build it from this repo.
-app=/Applications/AgentNV.app
+app=/Applications/AgVim.app
 if [ ! -d "$app" ]; then
-  app="$HOME/Applications/AgentNV.app"
+  app="$HOME/Applications/AgVim.app"
   if "$REPO/macos/bundle.sh" --app-only >/dev/null 2>&1; then
     mkdir -p "$HOME/Applications"
     rm -rf "$app"
-    cp -R "$REPO/dist/AgentNV.app" "$app"
+    cp -R "$REPO/dist/AgVim.app" "$app"
     note "built $app"
   else
     warn "couldn't build the app. Everything else works without it."
   fi
 fi
 # Once, so an icon you've deleted stays deleted.
-mkdir -p "$HOME/.config/agentnv"
-if [ -d "$app" ] && [ ! -e "$HOME/.config/agentnv/desktop-icon" ]; then
-  if ln -sfn "$app" "$HOME/Desktop/AgentNV.app" 2>/dev/null; then
-    touch "$HOME/.config/agentnv/desktop-icon"
-    note "added AgentNV to your Desktop"
+mkdir -p "$HOME/.config/agvim"
+if [ -d "$app" ] && [ ! -e "$HOME/.config/agvim/desktop-icon" ]; then
+  if ln -sfn "$app" "$HOME/Desktop/AgVim.app" 2>/dev/null; then
+    touch "$HOME/.config/agvim/desktop-icon"
+    note "added AgVim to your Desktop"
   else
-    warn "couldn't add the icon to your Desktop: open AgentNV from $app instead."
+    warn "couldn't add the icon to your Desktop: open AgVim from $app instead."
   fi
 fi
 
@@ -242,16 +267,16 @@ for tool in flutter fvm cargo rustup python3 node swift terraform xcode-build-se
 done
 [ -z "$missing" ] || note "Not installed (only needed for those languages):$missing"
 
-if [ "$FRESH" = 1 ] && [ -z "${AGENTNV_NO_LAUNCH:-}" ]; then
-  "$HOME/.local/bin/agentnv" _projects new-terminal
+if [ "$FRESH" = 1 ] && [ -z "${AGVIM_NO_LAUNCH:-}" ]; then
+  "$HOME/.local/bin/agvim" _projects new-terminal
 fi
 
 cat <<'EOF'
 
-Done. In any terminal, run: agentnv
-  - It asks what you want. For every command: agentnv help
-  - Finder: right-click a folder > New AgentNV Project or Add to AgentNV Project
-  - Or click the AgentNV icon on your Desktop
+Done. In any terminal, run: agvim
+  - It asks what you want. For every command: agvim help
+  - Finder: right-click a folder > New AgVim Project or Add to AgVim Project
+  - Or click the AgVim icon on your Desktop
 Inside Neovim: Space tc starts Claude in a new tab, Alt-g shows git changes.
 Keys: nvim/README.md
 EOF

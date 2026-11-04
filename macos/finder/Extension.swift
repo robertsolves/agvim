@@ -1,7 +1,7 @@
 import Cocoa
 import FinderSync
 
-// New AgentNV Project, Add to AgentNV Project and Copy Directory, directly in Finder's
+// New AgVim Project, Add to AgVim Project and Copy Directory, directly in Finder's
 // right-click menu. Finder runs this in a sandbox, so the first two hand over to the `run` script in Application Scripts,
 // which macOS runs outside the sandbox (build.sh puts it there).
 @objc(FinderExtension)
@@ -16,8 +16,8 @@ final class FinderExtension: FIFinderSync {
     guard menuKind == .contextualMenuForItems || menuKind == .contextualMenuForContainer else { return nil }
     let menu = NSMenu(title: "")
     let icon = themed(Bundle(for: FinderExtension.self).image(forResource: "menu-icon"))
-    menu.addItem(withTitle: "New AgentNV Project", action: #selector(newProject(_:)), keyEquivalent: "").image = icon
-    menu.addItem(withTitle: "Add to AgentNV Project", action: #selector(addToProject(_:)), keyEquivalent: "").image = icon
+    menu.addItem(withTitle: "New AgVim Project", action: #selector(newProject(_:)), keyEquivalent: "").image = icon
+    menu.addItem(withTitle: "Add to AgVim Project", action: #selector(addToProject(_:)), keyEquivalent: "").image = icon
     if menuKind == .contextualMenuForItems {
       menu.addItem(withTitle: "Copy Directory", action: #selector(copyDirectory(_:)), keyEquivalent: "").image =
         themed(NSImage(systemSymbolName: "doc.on.doc", accessibilityDescription: nil))

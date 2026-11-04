@@ -6,7 +6,7 @@
 #   tab close <client> <window-id>    ask, then close that tab (just that terminal)
 #
 # Used by tmux.conf (Alt-t, the + Shell and x on the tab line, prefix c) and
-# Neovim's Space tn, as `agentnv _tab`. Session defaults to the one you're in.
+# Neovim's Space tn, as `agvim _tab`. Session defaults to the one you're in.
 
 new() {
   local s="$1" n=1
@@ -34,7 +34,7 @@ close() {
     project="$(tmux display -p -t "$2" '#{session_name}')"
     folder="$(tmux display -p -t "$2" '#{@folder}')"
     tmux confirm-before -b -t "$1" -p "Close ${name//\#/##} and take it out of ${project//\#/##}? (y/n)" \
-      "kill-window -t '$2' ; run-shell -b \"~/.local/bin/agentnv _project remove '${project//\'/}' '${folder//\'/\'\\\'\'}' >/dev/null 2>&1 ; true\""
+      "kill-window -t '$2' ; run-shell -b \"~/.local/bin/agvim _project remove '${project//\'/}' '${folder//\'/\'\\\'\'}' >/dev/null 2>&1 ; true\""
     return 0
   fi
   tmux confirm-before -b -t "$1" -p "Close ${name//\#/##}? (y/n)" "kill-window -t '$2'"

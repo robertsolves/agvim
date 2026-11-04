@@ -1,13 +1,13 @@
 #!/bin/zsh
 # terminal [--which] <file.command>: run a script in a new window of your terminal.
-# Your choice if you made one (agentnv terminal), else kitty, which comes with AgentNV
+# Your choice if you made one (agvim terminal), else kitty, which comes with AgVim
 # and gets macos/kitty.conf for these windows. Without kitty: the one you last ran
-# agentnv in, else the first installed below, with Terminal last since it may not draw
-# Neovim's icons and colours well. --which only says which one. Used by the AgentNV
+# agvim in, else the first installed below, with Terminal last since it may not draw
+# Neovim's icons and colours well. --which only says which one. Used by the AgVim
 # app and Finder's menu.
 
 script="${1:A}"
-config=~/.config/agentnv
+config=~/.config/agvim
 
 installed() {
   local name

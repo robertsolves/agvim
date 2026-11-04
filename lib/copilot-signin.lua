@@ -1,6 +1,6 @@
--- Copilot's sign-in, for `agentnv ai signin`, in the terminal rather than in Neovim's
+-- Copilot's sign-in, for `agvim ai signin`, in the terminal rather than in Neovim's
 -- screen: run with nvim --headless. Shows the code, opens the browser and waits. With
--- AGENTNV_COPILOT_STATUS set it only says whether you're signed in.
+-- AGVIM_COPILOT_STATUS set it only says whether you're signed in.
 local function say(text)
   io.stdout:write(text .. "\n")
   io.stdout:flush()
@@ -42,7 +42,7 @@ copilot.use_client(function(client)
       say("Signed in to GitHub as " .. status.user .. ".")
       return finish(0)
     end
-    if vim.env.AGENTNV_COPILOT_STATUS then
+    if vim.env.AGVIM_COPILOT_STATUS then
       say "Not signed in to Copilot."
       return finish(3)
     end
@@ -57,7 +57,7 @@ copilot.use_client(function(client)
     say ""
     say "Waiting for you to finish in the browser..."
     vim.fn.system({ "pbcopy" }, signin.userCode)
-    if not vim.env.AGENTNV_NO_BROWSER then
+    if not vim.env.AGVIM_NO_BROWSER then
       vim.ui.open(signin.verificationUri)
     end
     local confirm_err, confirm = api.sign_in_confirm(client, { userCode = signin.userCode })

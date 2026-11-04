@@ -13,8 +13,8 @@
 #   - the links in ~/.config/nvim, ~/.tmux.conf and ~/.local/bin (only ones that lead
 #     to this setup), its PATH line in ~/.zshrc, and what earlier versions added to
 #     kitty's config
-#   - Finder's right-click menu, the AgentNV app and its Desktop icon
-#   - saved projects, ~/.config/agentnv, and the tmux plugins and saved
+#   - Finder's right-click menu, the AgVim app and its Desktop icon
+#   - saved projects, ~/.config/agvim, and the tmux plugins and saved
 #     sessions of earlier versions
 #   - Neovim's plugins, language servers, cache and state (~/.local/share/nvim,
 #     ~/.local/state/nvim, ~/.cache/nvim)
@@ -45,7 +45,7 @@ done
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ ! -f "$REPO/install.sh" ] || [ -z "${HOME:-}" ] || [ "$REPO" = "$HOME" ]; then
-  echo "uninstall.sh: run it from the agentnv clone." >&2
+  echo "uninstall.sh: run it from the agvim clone." >&2
   exit 1
 fi
 
@@ -131,13 +131,13 @@ unlink_ours tmux/tmux.conf "$HOME/.tmux.conf"
 for conf in agent-workspace launch-actions startup-session; do
   unlink_ours "kitty/$conf.conf" "$HOME/.config/kitty/$conf.conf"
 done
-for name in agentnv t p gd open-project project projects tab workspace; do # the rest: earlier versions
+for name in agvim t p gd open-project project projects tab workspace agentnv; do # the rest: earlier versions
   unlink_ours "bin/$name" "$HOME/.local/bin/$name"
 done
 
 step "Shell setup"
-if [ -f "$HOME/.zshrc" ] && grep -q '# agentnv$' "$HOME/.zshrc"; then
-  sed -i '' '/# agentnv$/d' "$HOME/.zshrc"
+if [ -f "$HOME/.zshrc" ] && grep -q '# agvim$' "$HOME/.zshrc"; then
+  sed -i '' '/# agvim$/d' "$HOME/.zshrc"
   note "removed the PATH line from ~/.zshrc"
 else
   note "nothing to remove"
@@ -153,13 +153,13 @@ else
 fi
 
 step "Finder's right-click menu"
-extension_id=io.github.robertsolves.agentnv.finder.extension
-if [ -d "$HOME/Applications/agentnv Finder.app" ]; then
+extension_id=io.github.robertsolves.agvim.finder.extension
+if [ -d "$HOME/Applications/agvim Finder.app" ]; then
   pluginkit -e ignore -i "$extension_id" 2>/dev/null
-  pluginkit -r "$HOME/Applications/agentnv Finder.app/Contents/PlugIns/agentnv-extension.appex" 2>/dev/null
-  pkill -f agentnv-extension
+  pluginkit -r "$HOME/Applications/agvim Finder.app/Contents/PlugIns/agvim-extension.appex" 2>/dev/null
+  pkill -f agvim-extension
 fi
-rm -rf "$HOME/Applications/agentnv Finder.app" "$HOME/Library/Application Scripts/$extension_id"
+rm -rf "$HOME/Applications/agvim Finder.app" "$HOME/Library/Application Scripts/$extension_id"
 rm -rf "$HOME/Library/Containers/$extension_id" 2>/dev/null # macOS may keep this empty folder
 for action in "New Project" "Add to Project" "Open in Neovim"; do # earlier versions
   rm -rf "$HOME/Library/Services/$action.workflow"
@@ -167,11 +167,11 @@ done
 /System/Library/CoreServices/pbs -update 2>/dev/null
 note "removed"
 
-step "The AgentNV app and its Desktop icon"
-[ ! -L "$HOME/Desktop/AgentNV.app" ] || rm "$HOME/Desktop/AgentNV.app"
-rm -rf "$HOME/Applications/AgentNV.app"
-if [ "$(defaults read /Applications/AgentNV.app/Contents/Info CFBundleIdentifier 2>/dev/null)" = io.github.robertsolves.agentnv ]; then
-  rm -rf /Applications/AgentNV.app
+step "The AgVim app and its Desktop icon"
+[ ! -L "$HOME/Desktop/AgVim.app" ] || rm "$HOME/Desktop/AgVim.app"
+rm -rf "$HOME/Applications/AgVim.app"
+if [ "$(defaults read /Applications/AgVim.app/Contents/Info CFBundleIdentifier 2>/dev/null)" = io.github.robertsolves.agvim ]; then
+  rm -rf /Applications/AgVim.app
 fi
 note "removed"
 
@@ -196,7 +196,7 @@ if [ "$BREW" = 1 ]; then
       note "left $formula (not installed, or something needs it)"
     fi
   done
-  if [ -f "$HOME/.config/agentnv/installed-kitty" ]; then
+  if [ -f "$HOME/.config/agvim/installed-kitty" ]; then
     brew uninstall --cask kitty >/dev/null 2>&1 && note "uninstalled kitty"
   fi
   if brew uninstall --cask font-jetbrains-mono-nerd-font >/dev/null 2>&1; then
@@ -208,7 +208,7 @@ else
   printf '\nHomebrew packages stay: other things may use them. To remove them too: brew uninstall %s\n' "$(brew_formulae | tr '\n' ' ')"
 fi
 
-rm -rf "$HOME/.config/agentnv"
+rm -rf "$HOME/.config/agvim"
 
 if [ "$DELETE_REPO" = 1 ]; then
   step "This clone"

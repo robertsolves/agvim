@@ -2,7 +2,7 @@ local ai = require "configs.ai"
 
 return {
   -- Suggestions as you type: Tab or Alt-l accepts, Alt-n / Alt-p next / previous, Alt-e
-  -- dismisses. Choose the source with `agentnv ai`.
+  -- dismisses. Choose the source with `agvim ai`.
   {
     "zbirenbaum/copilot.lua",
     cond = ai.is_copilot(),

@@ -2,7 +2,7 @@
 # projects: the projects bar, the tabs along the top (tmux/projects.conf). Each
 # of its tabs shows one project's tmux session.
 #
-#   projects                       show the bar in this terminal (`agentnv continue`
+#   projects                       show the bar in this terminal (`agvim continue`
 #                                  runs this): this repo first, then a tab for
 #                                  everything open last time, each started only when
 #                                  you first look at it
@@ -14,7 +14,7 @@
 #   projects new-terminal          open the workspace in a new window of your terminal
 #                                  (lib/terminal)
 #
-# Used by agentnv, open-project and the bar's x.
+# Used by agvim, open-project and the bar's x.
 
 repo="${0:A:h:h}"
 conf="$repo/tmux/projects.conf"
@@ -44,8 +44,8 @@ add() {
   bar list-windows -t '=projects' -F '#{window_name}' 2>/dev/null | grep -qxF -- "$1" && return
   if ! bar has-session -t '=projects' 2>/dev/null; then
     "$repo/lib/project" ensure-self
-    bar -f "$conf" new-session -d -s projects -n agentnv -x 200 -y 50 "$repo/lib/projects" run agentnv
-    [ "$1" = agentnv ] && return
+    bar -f "$conf" new-session -d -s projects -n agvim -x 200 -y 50 "$repo/lib/projects" run agvim
+    [ "$1" = agvim ] && return
   fi
   bar new-window -d -t '=projects:' -n "$1" "$repo/lib/projects" run "$1"
 }
@@ -66,17 +66,17 @@ autosave() {
 case "$1" in
   "")
     if [ -n "$TMUX" ] && [ -n "$(bar list-clients 2>/dev/null)" ]; then
-      print -r -- "agentnv is open already: + Project and + Shell are on its top bar."
+      print -r -- "agvim is open already: + Project and + Shell are on its top bar."
       exit 0
     fi
     app="$(terminal_app)"
     if [ -n "$app" ]; then
-      mkdir -p ~/.config/agentnv
-      print -r -- "$app" >~/.config/agentnv/last-terminal
+      mkdir -p ~/.config/agvim
+      print -r -- "$app" >~/.config/agvim/last-terminal
     fi
     work has-session 2>/dev/null && work source-file ~/.tmux.conf # pick up changes to it
     bar source-file "$conf" 2>/dev/null
-    add agentnv
+    add agvim
     for s in ${(f)"$(work list-sessions -F '#{session_name}' 2>/dev/null)"}; do
       add "$s"
     done
@@ -116,14 +116,14 @@ case "$1" in
     # prompt is -b (returns at once, 0 whatever the answer) and the close
     # itself is quiet.
     name="$(bar display -p -t "$3" '#{window_name}')" || exit 0
-    [ "$name" != agentnv ] || exit 0 # it has no x; always stays open
+    [ "$name" != agvim ] || exit 0 # it has no x; always stays open
     if [ -f "$store/$name" ]; then
       question="Close ${name//\#/##}? Its tabs stop and come back when you open it. (y/n)"
     else
       question="Close ${name//\#/##} and all its tabs? (y/n)"
     fi
     bar confirm-before -b -t "$2" -p "$question" \
-      "run-shell -b \"~/.local/bin/agentnv _project close '$name' '$3' >/dev/null 2>&1 ; true\""
+      "run-shell -b \"~/.local/bin/agvim _project close '$name' '$3' >/dev/null 2>&1 ; true\""
     ;;
   stop)
     if [ "$2" != --now ]; then
@@ -137,20 +137,20 @@ case "$1" in
     exit 0
     ;;
   popup)
-    # From kitty's menu bar: agentnv in a popup, over the window that has the bar.
+    # From kitty's menu bar: agvim in a popup, over the window that has the bar.
     shift
     client="$(bar list-clients -F '#{client_name}' | head -1)"
     [ -n "$client" ] || exit 0
-    bar display-popup -c "$client" -E -w 80% -h 70% "env -u TMUX AGENTNV_POPUP=1 ~/.local/bin/agentnv ${(q)@}"
+    bar display-popup -c "$client" -E -w 80% -h 70% "env -u TMUX AGVIM_POPUP=1 ~/.local/bin/agvim ${(q)@}"
     ;;
   front)
-    [ -f ~/.config/agentnv/last-terminal ] && open -a "$(<~/.config/agentnv/last-terminal)"
+    [ -f ~/.config/agvim/last-terminal ] && open -a "$(<~/.config/agvim/last-terminal)"
     exit 0
     ;;
   new-terminal)
-    mkdir -p ~/.config/agentnv
-    command=~/.config/agentnv/open.command
-    print -l '#!/bin/zsh -l' 'export PATH="$PATH:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin"' 'exec "$HOME/.local/bin/agentnv" continue' >"$command"
+    mkdir -p ~/.config/agvim
+    command=~/.config/agvim/open.command
+    print -l '#!/bin/zsh -l' 'export PATH="$PATH:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin"' 'exec "$HOME/.local/bin/agvim" continue' >"$command"
     chmod +x "$command"
     "$repo/lib/terminal" "$command"
     ;;

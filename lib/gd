@@ -1,5 +1,5 @@
 #!/bin/zsh
-# agentnv diff [rev]: show every git change in this repo, side by side, then quit.
+# agvim diff [rev]: show every git change in this repo, side by side, then quit.
 # No rev = uncommitted changes; main = everything since main; or HEAD~3.
 # q or Alt-g closes it. Also on tmux prefix g (as a popup).
 exec nvim --cmd 'let g:diff_only = 1' -c 'nnoremap q <cmd>qall!<cr>' -c "DiffviewOpen $*"

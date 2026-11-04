@@ -6,7 +6,7 @@
 # windows: "nvim" (Neovim), then "shell 1", "shell 2"... (+ Shell or Alt-t adds
 # one). Every window starts in the project folder. Closing the workspace saves and
 # stops them all (bin/project); opening it again brings them back.
-# Used by agentnv, p, project and the bar (--window: also bring the terminal to the front, or open one).
+# Used by agvim, p, project and the bar (--window: also bring the terminal to the front, or open one).
 
 unset TMUX # it may be the bar's; every tmux below is yours
 

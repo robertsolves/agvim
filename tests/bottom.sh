@@ -2,7 +2,7 @@
 repo="${0:A:h:h}"
 base=$(mktemp -d /tmp/awf.XXXX); base=${base:A}
 export HOME=$base/h TMUX_TMPDIR=$base/t SHELL=/bin/zsh; mkdir -p $HOME/.local/bin $TMUX_TMPDIR; unset TMUX; touch ~/.zshrc
-ln -s $repo/bin/agentnv ~/.local/bin/agentnv; ln -s $repo/tmux/tmux.conf ~/.tmux.conf
+ln -s $repo/bin/agvim ~/.local/bin/agvim; ln -s $repo/tmux/tmux.conf ~/.tmux.conf
 print 'set -g default-terminal xterm-256color' > ~/outer.conf
 tmux -f ~/.tmux.conf new-session -d -s P -n nvim -x 80 -y 20 -c $HOME 'sleep 300'
 for i in {2..14}; do tmux new-window -d -t '=P:' -n "tab-$i-long-name" 'sleep 300'; done

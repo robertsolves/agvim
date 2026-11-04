@@ -3,13 +3,13 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleExecutable</key>
-	<string>agentnv-finder</string>
+	<string>agvim-finder</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
-	<string>io.github.robertsolves.agentnv.finder</string>
+	<string>io.github.robertsolves.agvim.finder</string>
 	<key>CFBundleName</key>
-	<string>agentnv Finder</string>
+	<string>agvim Finder</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

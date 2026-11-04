@@ -1,6 +1,6 @@
 # Coding agents: Neovim key after Space t, name (also the command), how to continue the
 # last conversation, where to get it. One tab per column gap. Read by lib/project,
-# bin/agentnv and nvim/lua/configs/terminals.lua. "-" means it starts fresh.
+# bin/agvim and nvim/lua/configs/terminals.lua. "-" means it starts fresh.
 c	claude	claude --continue	https://claude.com/claude-code
 x	codex	codex resume --last	https://github.com/openai/codex
 p	copilot	copilot --continue	https://github.com/features/copilot/cli

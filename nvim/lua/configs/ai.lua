@@ -1,12 +1,12 @@
--- AI autocomplete: suggestions as you type, from the source chosen with `agentnv ai`.
+-- AI autocomplete: suggestions as you type, from the source chosen with `agvim ai`.
 -- Copilot through copilot.lua (the free default), anything else through minuet-ai.
--- Keys live in ~/.config/agentnv/ai, readable only by you, and are never put in the
+-- Keys live in ~/.config/agvim/ai, readable only by you, and are never put in the
 -- environment, so programs started from Neovim can't see them.
 local M = {}
 
 local function read_settings()
   local settings = {}
-  local file = vim.env.AGENTNV_AI_FILE or vim.fn.expand "~/.config/agentnv/ai"
+  local file = vim.env.AGVIM_AI_FILE or vim.fn.expand "~/.config/agvim/ai"
   if vim.fn.filereadable(file) == 1 then
     for _, line in ipairs(vim.fn.readfile(file)) do
       local name, value = line:match "^([%w_]+)=(.*)$"

@@ -30,7 +30,7 @@ end
 
 local function run(cmd)
   if not vim.env.TMUX then
-    vim.notify("Terminal tabs need tmux: open it with agentnv.", vim.log.levels.WARN)
+    vim.notify("Terminal tabs need tmux: open it with agvim.", vim.log.levels.WARN)
     return
   end
   vim.system(cmd, {}, function(result)
@@ -50,7 +50,7 @@ end
 -- when `cmd` is nil, else the agent `cmd` in a tab called `name`.
 function M.new(name, cmd)
   if not cmd then
-    run { vim.fn.expand "~/.local/bin/agentnv", "_tab", "new" }
+    run { vim.fn.expand "~/.local/bin/agvim", "_tab", "new" }
     return
   end
   local args = { "new-window", "-c", vim.fn.getcwd(), "-n", name }

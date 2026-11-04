@@ -1,5 +1,5 @@
 ---
-description: Publish a new version of AgentNV
+description: Publish a new version of AgVim
 ---
 
-Follow `.agents/skills/release-agentnv/SKILL.md`.
+Follow `.agents/skills/release-agvim/SKILL.md`.

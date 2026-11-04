@@ -1,47 +1,47 @@
 #!/bin/zsh
-# agentnv: the one command, from any terminal. On its own it asks what you want.
+# agvim: the one command, from any terminal. On its own it asks what you want.
 #
 # Projects (-p picks one; otherwise the one you're in)
-#   agentnv add [folder] [-p name]     add a folder (default: here) to a project, made
+#   agvim add [folder] [-p name]     add a folder (default: here) to a project, made
 #                                      if needed. Outside any project: a new one
-#   agentnv new [folder] [-n name]     save a folder as a new project and open it
-#   agentnv open [folder] [-p name]    open a folder or a project; neither: pick one
-#   agentnv close [-p name]            save a project and stop its tabs
-#   agentnv remove [folder] [-p name]  take a folder out of a project
-#   agentnv rename [new] [-p name]     rename a project; asks what it doesn't know
-#   agentnv delete [-p name]           forget a project and close it (its folders stay);
+#   agvim new [folder] [-n name]     save a folder as a new project and open it
+#   agvim open [folder] [-p name]    open a folder or a project; neither: pick one
+#   agvim close [-p name]            save a project and stop its tabs
+#   agvim remove [folder] [-p name]  take a folder out of a project
+#   agvim rename [new] [-p name]     rename a project; asks what it doesn't know
+#   agvim delete [-p name]           forget a project and close it (its folders stay);
 #                                      asks which, and to be sure, without -p
-#   agentnv list                       your projects, their folders, which are running
+#   agvim list                       your projects, their folders, which are running
 #   add and new take --no-open: save it without opening anything.
 #
 # Tabs
-#   agentnv tab [command] [-p name]    a new tab: a shell, or a command such as claude
-#   agentnv tabs [-p name]             the tabs of a project
-#   agentnv agent <name> [-p name]     a new tab with a coding agent
-#   agentnv agents                     the agents it knows, and where to get them
-#   agentnv name <text>                rename the tab you're in; agents won't change it
-#   agentnv shell                      a terminal of its own, outside any project
+#   agvim tab [command] [-p name]    a new tab: a shell, or a command such as claude
+#   agvim tabs [-p name]             the tabs of a project
+#   agvim agent <name> [-p name]     a new tab with a coding agent
+#   agvim agents                     the agents it knows, and where to get them
+#   agvim name <text>                rename the tab you're in; agents won't change it
+#   agvim shell                      a terminal of its own, outside any project
 #
 # The workspace
-#   agentnv continue                   what was open last time
-#   agentnv refresh                    load changes to AgentNV, keeping everything open
-#   agentnv save                       save everything now (it's automatic too)
-#   agentnv stop                       save everything, stop it all, close the window
-#   agentnv diff [rev]                 every git change here, side by side
-#   agentnv ai [source|off|list]       AI suggestions as you type: free Copilot, or your key
+#   agvim continue                   what was open last time
+#   agvim refresh                    load changes to AgVim, keeping everything open
+#   agvim save                       save everything now (it's automatic too)
+#   agvim stop                       save everything, stop it all, close the window
+#   agvim diff [rev]                 every git change here, side by side
+#   agvim ai [source|off|list]       AI suggestions as you type: free Copilot, or your key
 #                                      for Claude, OpenAI, Gemini, DeepSeek and many more
-#   agentnv ai test [source]           check that a source really answers
-#   agentnv ai signin                  sign in to Copilot
-#   agentnv folder                     show where your projects are saved
-#   agentnv roots [add|remove folder]  where the project picker looks for folders
-#   agentnv terminal [app|auto]        which terminal the icon and Finder use
-#   agentnv update                     the latest version, installed again
-#   agentnv uninstall [--brew]         remove it all, after asking
-#   agentnv version
-#   agentnv help
+#   agvim ai test [source]           check that a source really answers
+#   agvim ai signin                  sign in to Copilot
+#   agvim folder                     show where your projects are saved
+#   agvim roots [add|remove folder]  where the project picker looks for folders
+#   agvim terminal [app|auto]        which terminal the icon and Finder use
+#   agvim update                     the latest version, installed again
+#   agvim uninstall [--brew]         remove it all, after asking
+#   agvim version
+#   agvim help
 #
 # The scripts behind it are in lib/. tmux, Neovim and Finder call them as
-# `agentnv _<script>`, so only this command needs to be on your PATH.
+# `agvim _<script>`, so only this command needs to be on your PATH.
 
 export PATH="$PATH:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin"
 self="${0:A}"
@@ -53,7 +53,7 @@ tab=$'\t'
 help() { "$lib/banner"; sed -n '2,/^# The scripts behind/p' "$self" | sed '$d' | sed 's/^# \{0,1\}//'; }
 
 die() {
-  print -r -- "agentnv: $1" >&2
+  print -r -- "agvim: $1" >&2
   exit 1
 }
 
@@ -76,7 +76,7 @@ parse() {
       --model) [ -n "$2" ] || die "$1 needs a model"; ai_model="$2"; shift 2 ;;
       -h | --help) help; exit 0 ;;
       --) shift; args+=("$@"); return ;;
-      -*) die "no option called $1 here. See agentnv help" ;;
+      -*) die "no option called $1 here. See agvim help" ;;
       *) args+=("$1"); shift ;;
     esac
   done
@@ -87,7 +87,7 @@ parse() {
 current() {
   [ -n "$(tmux -L projects list-clients 2>/dev/null)" ] || return 1
   local s
-  if [ -n "$AGENTNV_POPUP" ]; then
+  if [ -n "$AGVIM_POPUP" ]; then
     s="$(tmux -L projects display -p -t '=projects:' '#{window_name}' 2>/dev/null)"
   else
     [ -n "$TMUX" ] || return 1
@@ -105,7 +105,7 @@ which_project() {
 }
 
 # AI autocomplete: settings are NAME=value lines in a file only you can read.
-ai_file=~/.config/agentnv/ai
+ai_file=~/.config/agvim/ai
 ai_get() { [ -f "$ai_file" ] && sed -n "s/^$1=//p" "$ai_file" | tail -1; }
 ai_set() {
   (
@@ -144,7 +144,7 @@ ai_models() {
 ai_use() {
   local id="$1" row kind url model key answer listed rc
   row="$(ai_row "$id")"
-  [ -n "$row" ] || die "no AI source called $id. See agentnv ai list"
+  [ -n "$row" ] || die "no AI source called $id. See agvim ai list"
   kind="$(print -r -- "$row" | cut -f3)"
   url="$(print -r -- "$row" | cut -f4)"
   model="$(print -r -- "$row" | cut -f5)"
@@ -213,7 +213,7 @@ ai_apply() {
   [ -z "$(tmux list-sessions 2>/dev/null)" ] || "$lib/project" refresh
 }
 
-# Asks which saved project (agentnv itself can't be renamed or deleted).
+# Asks which saved project (agvim itself can't be renamed or deleted).
 pick_project() {
   [ -t 0 ] || die "say which project with -p <name>"
   local names
@@ -230,16 +230,16 @@ folder_arg() {
 
 wizard() {
   local rows=() open=""
-  if [ -n "$AGENTNV_POPUP" ]; then
+  if [ -n "$AGVIM_POPUP" ]; then
     : # it's what you're looking at
   elif [ -z "$TMUX" ] && [ -n "$(tmux -L projects list-clients 2>/dev/null)" ]; then
     rows+=("continue${tab}Show what's open")
   elif [ -z "$(tmux -L projects list-clients 2>/dev/null)" ]; then
-    # Only what still exists; the agentnv tab alone isn't somewhere you left off.
+    # Only what still exists; the agvim tab alone isn't somewhere you left off.
     local name left=()
     if [ -s "$store/.open" ]; then
       for name in ${(f)"$(<"$store/.open")"}; do
-        [ "$name" != agentnv ] || continue
+        [ "$name" != agvim ] || continue
         if [ -f "$store/$name" ] || [ -s "$store/.tabs/$name/tabs" ]; then
           left+=("$name")
         fi
@@ -259,7 +259,7 @@ wizard() {
     "exit${tab}Exit"
   )
   local pick
-  pick="$(print -rl -- "${rows[@]}" | fzf --delimiter="$tab" --with-nth=2 --height=~15 --reverse --no-info --prompt="agentnv> ")" || return 0
+  pick="$(print -rl -- "${rows[@]}" | fzf --delimiter="$tab" --with-nth=2 --height=~15 --reverse --no-info --prompt="agvim> ")" || return 0
   print -r -- "${pick%%$tab*}"
 }
 
@@ -360,9 +360,9 @@ case "$cmd" in
     ;;
   agent)
     parse "$@"
-    [ -n "$args[1]" ] || die "usage: agentnv agent <name> [-p name]. See agentnv agents"
+    [ -n "$args[1]" ] || die "usage: agvim agent <name> [-p name]. See agvim agents"
     where="$(awk -F'\t' -v n="$args[1]" '$2 == n { print $4 }' "$lib/agents.tsv")"
-    [ -n "$where" ] || die "no agent called $args[1]. See agentnv agents"
+    [ -n "$where" ] || die "no agent called $args[1]. See agvim agents"
     command -v "$args[1]" >/dev/null || die "$args[1] isn't installed. Get it from $where"
     target="$(which_project)" || exit 1
     exec "$lib/project" tab "$target" "$args[1]"
@@ -380,7 +380,7 @@ case "$cmd" in
     ;;
   name)
     [ -n "$TMUX_PANE" ] || die "run it in the tab you want to rename"
-    [ $# -gt 0 ] || die "usage: agentnv name <text>"
+    [ $# -gt 0 ] || die "usage: agvim name <text>"
     tmux rename-window -t "$TMUX_PANE" "${*//$'\t'/ }"
     tmux set-option -w -t "$TMUX_PANE" @named 1
     ;;
@@ -408,7 +408,7 @@ case "$cmd" in
         [ -n "$args[2]" ] && id="$args[2]" || id="$(ai_get use)"
         id="${id:-copilot}"
         if [ "$id" = copilot ]; then
-          AGENTNV_COPILOT_STATUS=1 nvim --headless -c "luafile $lib/copilot-signin.lua"
+          AGVIM_COPILOT_STATUS=1 nvim --headless -c "luafile $lib/copilot-signin.lua"
         elif [ "$id" = off ]; then
           print -r -- "AI autocomplete is off."
         else
@@ -434,9 +434,9 @@ case "$cmd" in
     esac
     ;;
   roots)
-    roots_file=~/.config/agentnv/roots
+    roots_file=~/.config/agvim/roots
     if [ -n "$1" ]; then
-      [ -n "$2" ] || die "usage: agentnv roots [add|remove <folder>]"
+      [ -n "$2" ] || die "usage: agvim roots [add|remove <folder>]"
       where="${2:A}"
       mkdir -p "${roots_file:h}"
       # Your list replaces the default one, so it starts from that.
@@ -450,13 +450,13 @@ case "$cmd" in
           updated="$(grep -vxF -- "$where" "$roots_file")"
           print -r -- "$updated" >"$roots_file"
           ;;
-        *) die "usage: agentnv roots [add|remove <folder>]" ;;
+        *) die "usage: agvim roots [add|remove <folder>]" ;;
       esac
     fi
     if [ -f "$roots_file" ]; then cat "$roots_file"; else print -l ~/Projects ~/Developer ~/code ~/Desktop; fi
     ;;
   terminal)
-    config=~/.config/agentnv/terminal
+    config=~/.config/agvim/terminal
     case "$1" in
       "") ;;
       auto) rm -f "$config" ;;
@@ -484,13 +484,13 @@ case "$cmd" in
     # plugin lockfile as it runs; the repo's copy decides the versions.
     git -C "$repo" checkout -- nvim/lazy-lock.json 2>/dev/null
     if ! git -C "$repo" pull --ff-only; then
-      print -r -- "agentnv: couldn't update $repo. Nothing was installed. Your own changes there may be in the way: see git status." >&2
+      print -r -- "agvim: couldn't update $repo. Nothing was installed. Your own changes there may be in the way: see git status." >&2
       exit 1
     fi
     "$repo/install.sh" "$@" || exit 1
     "$lib/project" refresh
     print -r -- "Updated."
-    if [ -n "$AGENTNV_POPUP" ]; then
+    if [ -n "$AGVIM_POPUP" ]; then
       print -rn -- "Press Enter to close. "
       read -r _
     fi
@@ -503,7 +503,7 @@ case "$cmd" in
   help | -h | --help) help ;;
   _p | _project | _projects | _open-project | _tab | _gd) exec "$lib/${cmd#_}" "$@" ;;
   *)
-    print -r -- "agentnv: no command called $cmd. See agentnv help" >&2
+    print -r -- "agvim: no command called $cmd. See agvim help" >&2
     exit 1
     ;;
 esac

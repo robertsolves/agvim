@@ -1,22 +1,22 @@
 #!/bin/zsh
-# AgentNV.app's first launch on a Mac: a copy of the app's files in ~/.agentnv, then
-# install.sh, which installs the basics. Then it opens AgentNV in kitty.
+# AgVim.app's first launch on a Mac: a copy of the app's files in ~/.agvim, then
+# install.sh, which installs the basics. Then it opens AgVim in kitty.
 
 export PATH="$PATH:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin"
 payload="${0:A:h:h:h}"
-dir="${AGENTNV_DIR:-$HOME/.agentnv}"
-url="${AGENTNV_URL:-https://github.com/robertsolves/agentnv.git}"
+dir="${AGVIM_DIR:-$HOME/.agvim}"
+url="${AGVIM_URL:-https://github.com/robertsolves/agvim.git}"
 
 stop() {
   print -r -- ""
-  print -r -- "AgentNV isn't set up: $1"
-  print -r -- "Press Enter to close. Opening AgentNV again tries again."
+  print -r -- "AgVim isn't set up: $1"
+  print -r -- "Press Enter to close. Opening AgVim again tries again."
   read -r _
   exit 1
 }
 
 "$payload/lib/banner"
-print -r -- "Setting up AgentNV, once. It installs Homebrew if it's missing (your Mac asks for your"
+print -r -- "Setting up AgVim, once. It installs Homebrew if it's missing (your Mac asks for your"
 print -r -- "password), then kitty, git, Neovim, tmux, lazygit and the other basics."
 print -r -- ""
 
@@ -25,9 +25,9 @@ if [ ! -f "$dir/install.sh" ]; then
   xattr -dr com.apple.quarantine "$dir" 2>/dev/null
 fi
 
-AGENTNV_NO_LAUNCH=1 "$dir/install.sh" ${=AGENTNV_INSTALL_ARGS} || stop "install.sh failed. See above."
+AGVIM_NO_LAUNCH=1 "$dir/install.sh" ${=AGVIM_INSTALL_ARGS} || stop "install.sh failed. See above."
 
-# Git is here for sure now. A clone, so agentnv update works, if GitHub can be reached.
+# Git is here for sure now. A clone, so agvim update works, if GitHub can be reached.
 if [ ! -d "$dir/.git" ]; then
   git -C "$dir" init -q -b main
   git -C "$dir" remote add origin "$url"
@@ -35,13 +35,13 @@ if [ ! -d "$dir/.git" ]; then
     git -C "$dir" reset -q --hard origin/main
     git -C "$dir" branch -q -u origin/main 2>/dev/null
   else
-    print -r -- "Couldn't reach GitHub: using the version in this app. agentnv update won't work until it can."
+    print -r -- "Couldn't reach GitHub: using the version in this app. agvim update won't work until it can."
   fi
 fi
 
 print -r -- ""
-print -r -- "Done. Opening AgentNV."
+print -r -- "Done. Opening AgVim."
 # In kitty already: right here. Otherwise in kitty, which is here now.
-[ -n "$KITTY_WINDOW_ID" ] && exec ~/.local/bin/agentnv continue
-~/.local/bin/agentnv _projects new-terminal
+[ -n "$KITTY_WINDOW_ID" ] && exec ~/.local/bin/agvim continue
+~/.local/bin/agvim _projects new-terminal
 print -r -- "You can close this window."

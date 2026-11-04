@@ -1,6 +1,6 @@
 # AI autocomplete sources: id, name, kind, endpoint, model. One tab per column gap; "-" for
 # none. Kinds other than compatible are built into the plugins. A model of "ask" is asked for
-# when it is chosen, from the service's own list, since those change often. Read by bin/agentnv and
+# when it is chosen, from the service's own list, since those change often. Read by bin/agvim and
 # nvim/lua/configs/ai.lua.
 copilot	GitHub Copilot (free tier, sign in with GitHub)	copilot	-	-
 freechain	free-llm-chain (free models, runs on your Mac)	compatible	http://127.0.0.1:4000/v1/chat/completions	coder

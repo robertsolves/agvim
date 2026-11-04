@@ -1,20 +1,20 @@
 #!/bin/zsh
-# What AgentNV.app runs. Installed already: open AgentNV in your terminal, or bring
+# What AgVim.app runs. Installed already: open AgVim in your terminal, or bring
 # it to the front if it's open. Not yet: run the first-time setup in your terminal.
 
 export PATH="$PATH:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin"
-payload="${0:A:h:h}/Resources/agentnv"
-config=~/.config/agentnv
+payload="${0:A:h:h}/Resources/agvim"
+config=~/.config/agvim
 mkdir -p "$config"
 
-if [ -x ~/.local/bin/agentnv ] && [ -n "$(tmux -L projects list-clients 2>/dev/null)" ]; then
+if [ -x ~/.local/bin/agvim ] && [ -n "$(tmux -L projects list-clients 2>/dev/null)" ]; then
   [ -f "$config/last-terminal" ] && exec open -a "$(<"$config/last-terminal")"
   exit 0
 fi
 
 command="$config/open.command"
-if [ -x ~/.local/bin/agentnv ]; then
-  print -l '#!/bin/zsh -l' 'export PATH="$PATH:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin"' 'exec "$HOME/.local/bin/agentnv" continue' >"$command"
+if [ -x ~/.local/bin/agvim ]; then
+  print -l '#!/bin/zsh -l' 'export PATH="$PATH:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin"' 'exec "$HOME/.local/bin/agvim" continue' >"$command"
 else
   print -l '#!/bin/zsh -l' "exec /bin/zsh ${(q)payload}/macos/app/first-run" >"$command"
 fi
