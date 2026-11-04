@@ -1,5 +1,0 @@
-#!/bin/zsh
-# gd [rev]: show every git change in this repo, side by side, then quit.
-# `gd` = uncommitted changes, `gd main` = everything since main, `gd HEAD~3`.
-# q or Alt-g closes it. Also on tmux prefix g (as a popup).
-exec nvim --cmd 'let g:diff_only = 1' -c 'nnoremap q <cmd>qall!<cr>' -c "DiffviewOpen $*"

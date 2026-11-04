@@ -4,7 +4,7 @@ NvChad v2.5 on Neovim 0.12, set up for Flutter/Dart (plus the iOS and Android fo
 
 ## How it's meant to be used
 
-Each project is a tab along the top (`+` opens one, `×` closes it). Inside it, the tabs along the bottom are full screen: Neovim, then a shell, and as many more shells and agents as you like (`+`, Alt-t or Cmd-T for a shell). They're tmux windows, so they're saved and restored with the project. `Space tc` opens Claude in a new tab (already connected, so it sees your selection and shows edits as diffs: `Space aa` / `Space ad`). `Space tx` Codex, `Space to` OpenCode, `Space tk` Kilo, `Space tg` Gemini, `Space tf` Freebuff, `Space tn` a plain shell. An agent's tab shows its session's name. Every press starts another one; all keep running in the background. Files an agent changes reload in Neovim within a second; Alt-g shows everything it changed as side-by-side diffs (Alt-g again to go back). Click a tab or press Alt-1 to get back to Neovim.
+Each project is a tab along the top (`+ Project` opens one, `×` closes it). Inside it, the tabs along the bottom are full screen: Neovim, then a shell, and as many more shells and agents as you like (`+ Shell`, Alt-t for a shell). They're saved with the project and come back when you open it. `Space tc` opens Claude in a new tab (already connected, so it sees your selection and shows edits as diffs: `Space aa` / `Space ad`). `Space tx` Codex, `Space tp` Copilot, `Space tg` Gemini, `Space td` DeepSeek, `Space to` OpenCode, `Space tk` Kilo, `Space tf` Freebuff, `Space tu` Cursor, `Space ta` Aider, `Space tm` Amp, `Space tq` Qwen (`agentnv agents` shows which are installed), `Space tn` a plain shell. An agent's tab shows its session's name. Every press starts another one; all keep running in the background. Files an agent changes reload in Neovim within a second; Alt-g shows everything it changed as side-by-side diffs (Alt-g again to go back). Click a tab or press Alt-1 to get back to Neovim.
 
 ## Setup
 
@@ -19,7 +19,7 @@ Run `install.sh` at the top of this repo (see the repo's README). It links this 
 | Formatting | `lua/configs/conform.lua` |
 | Debuggers | `lua/configs/dap.lua` |
 | Keys | `lua/mappings.lua`, plus `after/ftplugin/{dart,rust,slint}.lua` |
-| Shell and agent tabs | `lua/configs/terminals.lua` (keys), `tmux/tmux.conf` and `bin/tab` at the top of the repo |
+| Shell and agent tabs | `lua/configs/terminals.lua` (keys), `tmux/tmux.conf` and `lib/tab` at the top of the repo |
 | Treesitter parsers | `lua/configs/treesitter_parsers.lua` |
 | Line numbers coloured by mode | `local-plugins/nvim-color-line-numbers-by-mode` |
 
@@ -47,15 +47,16 @@ Leader is Space. `Space` then wait shows every key (which-key). `Space ch` opens
 | `Space sp` | Slint live preview |
 | `Space ac` `as` `ab` `aa` `ad` | Claude Code: open, send selection, add file, accept/reject diff |
 | Alt-g (anywhere, even in an agent terminal) | show / hide all git changes, side by side (like VS Code's Source Control) |
-| `gd` in any terminal (or tmux prefix g) | the same view on its own, for whatever repo you are in; `gd main` compares with a branch; `q` quits |
+| `agentnv diff` in any terminal (or tmux prefix g) | the same view on its own, for whatever repo you are in; `agentnv diff main` compares with a branch; `q` quits |
 | `Space gv` / `Space gV` | open / close the same changes view |
 | `Space gf` / `Space gF` | this file's / the project's git history |
 | `Space gg` / `Space gh` / `Space gb` | lazygit / preview hunk / blame line |
 | `]h` `[h`, `Space gs` / `Space gu` / `Space gw` | next/previous change, stage / undo change / word diff |
-| `Space tn`, Alt-t, Cmd-T or `+` | new full-screen shell tab |
+| Tab or Alt-l, Alt-n / Alt-p, Alt-e | accept an AI suggestion, next / previous, dismiss (`agentnv ai` chooses the source) |
+| `Space tn`, Alt-t or `+ Shell` | new full-screen shell tab |
 | Alt-. / Alt-, / `Space tl` / `Space tr` | next / previous / pick / rename terminal |
-| click a tab (top: projects, bottom: this project's tabs) | switch to it; `×` on a bottom tab closes that terminal, `×` on a project at the top closes it and all its tabs (both ask), `+` at the top opens a project; right-click a bottom tab to rename it |
-| `Space tc` `tx` `to` `tk` `tg` | new Claude, Codex, OpenCode, Kilo, Gemini tab |
+| click a tab (top: projects, bottom: this project's tabs) | switch to it; `×` on a bottom tab closes that terminal, `×` on a project at the top closes it and all its tabs (both ask), `+ Project` at the top opens a project and `+ Shell` a console; right-click a bottom tab to rename it; with too many to fit, `<` `>` or the wheel on a bar move along it |
+| `Space tc` `tx` `tp` `tg` `td` `to` `tk` `tf` `tu` `ta` `tm` `tq` | new Claude, Codex, Copilot, Gemini, DeepSeek, OpenCode, Kilo, Freebuff, Cursor, Aider, Amp, Qwen tab |
 | `Space pi` | SVG rendered in a float (first frame), or the image under the cursor |
 | `Space pv` / `Space pc` | live browser preview of SVG (animated SMIL plays), HTML, Markdown / stop |
 | `Alt-i` / `Alt-h` / `Alt-v` | floating / horizontal / vertical terminal |
@@ -73,7 +74,7 @@ Leader is Space. `Space` then wait shows every key (which-key). `Space ch` opens
 
 ## Images and previews
 
-Opening a `.png`, `.jpg`, `.gif` or `.webp` shows the picture (kitty graphics; works inside tmux with `allow-passthrough on`). `.svg` opens as editable XML: `Space pi` shows it rendered, `Space pv` opens it in the browser where SMIL animations play, updating as you type. HTML previews in the browser too and refreshes on save.
+Opening a `.png`, `.jpg`, `.gif` or `.webp` shows the picture (in terminals with the kitty graphics protocol; works inside tmux with `allow-passthrough on`). `.svg` opens as editable XML: `Space pi` shows it rendered, `Space pv` opens it in the browser where SMIL animations play, updating as you type. HTML previews in the browser too and refreshes on save.
 
 ## Flutter iOS folder
 
@@ -81,10 +82,10 @@ Swift and Objective-C in `ios/` need to know the Xcode project. Once per app: bu
 
 ## Opening projects
 
-Each project gets a tmux session, all in one tmux, shown in a tab of its own along the top: window 1 runs Neovim, window 2 "shell 1" (Alt-1 / Alt-2). Every terminal starts in the project folder. Opening a project again returns to its running session. tmux saves every project every 5 minutes and restores them all when it next starts, agents continuing their last conversation; prefix Ctrl-s / Ctrl-r save / restore by hand.
+Each project is a tab along the top: a name and one or more folders, saved in `saved-projects/` of the repo. Inside it, window 1 runs Neovim, then lazygit (it comes back every time you open the project, even if you closed it), then "shell 1", in the first folder (Alt-1, Alt-2...), and each other folder gets a Neovim tab of its own. Closing a project or its terminal window saves its tabs and stops them; opening it again brings them back, agents continuing their last conversation.
 
-- Finder: right-click a folder → Quick Actions → **Open in Neovim**, or drop a folder on kitty's Dock icon. With kitty open, the project joins it; otherwise kitty opens. Source: `macos/Open in Neovim.workflow` in this repo.
-- Terminal: `t` opens the folder you're in (`t <dir>` another one); `p` fuzzy-picks from every project under `~/Projects`, `~/Developer`, `~/code` and `~/Desktop` (or the folders listed one per line in `~/.config/agent-workspace/roots`).
-- Inside tmux: `+` at the top, or prefix (Ctrl-Space) then `P` or `s`, picks a project in a popup and switches to it.
+- Finder: right-click a folder → **New AgentNV Project** or **Add to AgentNV Project**. Source: `macos/finder/` in this repo.
+- Inside the workspace: `+ Project` at the top, or prefix (Ctrl-Space) then `P` or `s`: open a saved project, make a new one from any folder, or add a folder to this one. `+ Shell` opens a console that isn't a project.
+- Terminal: `agentnv open` opens the picker, `agentnv open <dir>` a folder. The picker also lists every project folder under `~/Projects`, `~/Developer`, `~/code` and `~/Desktop` (or the folders listed one per line in `~/.config/agentnv/roots`).
 
-The scripts are in `bin/` at the top of this repo, linked into `~/.local/bin`.
+The scripts are in `lib/` at the top of this repo, behind the `agentnv` command.

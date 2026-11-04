@@ -1,0 +1,161 @@
+#!/bin/zsh
+# projects: the projects bar, the tabs along the top (tmux/projects.conf). Each
+# of its tabs shows one project's tmux session.
+#
+#   projects                       show the bar in this terminal (`agentnv continue`
+#                                  runs this): this repo first, then a tab for
+#                                  everything open last time, each started only when
+#                                  you first look at it
+#   projects show <name>           give project <name> a tab and show it
+#   projects close <client> <id>   ask, then save and stop that tab's project
+#   projects stop                  when the last window has gone (the bar's hook):
+#                                  save every project, stop them, free the memory
+#   projects front                 bring the terminal you use to the front
+#   projects new-terminal          open the workspace in a new window of your terminal
+#                                  (lib/terminal)
+#
+# Used by agentnv, open-project and the bar's x.
+
+repo="${0:A:h:h}"
+conf="$repo/tmux/projects.conf"
+store="$repo/saved-projects"
+bar() { command tmux -L projects "$@"; }
+work() { env -u TMUX tmux "$@"; } # your tmux, where the projects run
+
+# The app that this process runs in (kitty, iTerm, Terminal...), if any, so Finder's
+# actions can use that one. A shell or login above it can have an app's path in its
+# arguments, so what's before the path must be a real app folder.
+terminal_app() {
+  local pid=$$ cmd app
+  while [ "$pid" -gt 1 ]; do
+    cmd="$(ps -o command= -p "$pid")"
+    app="${cmd%%.app/Contents/*}.app"
+    if [[ "$cmd" == *.app/Contents/* && -d "$app" ]]; then
+      print -r -- "$app"
+      return
+    fi
+    pid="$(ps -o ppid= -p "$pid" | tr -d ' ')"
+  done
+}
+
+# A tab for project $1, unless it has one. The bar always starts with this repo as
+# its first tab, so you can get to it and update it from inside.
+add() {
+  bar list-windows -t '=projects' -F '#{window_name}' 2>/dev/null | grep -qxF -- "$1" && return
+  if ! bar has-session -t '=projects' 2>/dev/null; then
+    "$repo/lib/project" ensure-self
+    bar -f "$conf" new-session -d -s projects -n agentnv -x 200 -y 50 "$repo/lib/projects" run agentnv
+    [ "$1" = agentnv ] && return
+  fi
+  bar new-window -d -t '=projects:' -n "$1" "$repo/lib/projects" run "$1"
+}
+
+# Saves every 5 minutes while the bar is up, for a crash or a power cut.
+autosave() {
+  local pid
+  pid="$(bar show -gqv @autosave)"
+  [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null && return
+  {
+    while sleep 300 && bar has-session -t '=projects' 2>/dev/null; do
+      "$repo/lib/project" save-all
+    done
+  } >/dev/null 2>&1 </dev/null &!
+  bar set -g @autosave "$!"
+}
+
+case "$1" in
+  "")
+    if [ -n "$TMUX" ] && [ -n "$(bar list-clients 2>/dev/null)" ]; then
+      print -r -- "agentnv is open already: + Project and + Shell are on its top bar."
+      exit 0
+    fi
+    app="$(terminal_app)"
+    if [ -n "$app" ]; then
+      mkdir -p ~/.config/agentnv
+      print -r -- "$app" >~/.config/agentnv/last-terminal
+    fi
+    work has-session 2>/dev/null && work source-file ~/.tmux.conf # pick up changes to it
+    bar source-file "$conf" 2>/dev/null
+    add agentnv
+    for s in ${(f)"$(work list-sessions -F '#{session_name}' 2>/dev/null)"}; do
+      add "$s"
+    done
+    if [ -f "$store/.open" ]; then
+      for s in ${(f)"$(<"$store/.open")"}; do
+        # Only what can come back: a project, or a console with saved tabs.
+        { [ -f "$store/$s" ] || [ -s "$store/.tabs/$s/tabs" ]; } && add "$s"
+      done
+      [ -f "$store/.active" ] && bar select-window -t "=projects:=$(<"$store/.active")" 2>/dev/null
+    fi
+    autosave
+    exec env -u TMUX tmux -L projects attach -t '=projects'
+    ;;
+  run)
+    # What a tab of the bar runs. Nothing starts until the tab is first looked at,
+    # so opening the workspace doesn't start every project at once.
+    printf '%s is closed. It starts when you look at this tab.\n' "$2"
+    while sleep 0.3; do
+      [ "$(bar display -p -t "$TMUX_PANE" '#{window_active}')" = 1 ] && break
+    done
+    if ! "$repo/lib/project" start "$2"; then
+      sleep 5 # long enough to read why
+      exit 1
+    fi
+    exec env -u TMUX tmux attach -t "=$2"
+    ;;
+  show)
+    add "$2"
+    bar select-window -t "=projects:=$2"
+    # Stays the one shown when the bar opens around it (open-project).
+    mkdir -p "$store"
+    print -r -- "$2" >"$store/.active"
+    ;;
+  close)
+    # The bar runs this from run-shell, which shows any output or a non-zero
+    # exit in the pane (view mode: it swallows every key and click). So the
+    # prompt is -b (returns at once, 0 whatever the answer) and the close
+    # itself is quiet.
+    name="$(bar display -p -t "$3" '#{window_name}')" || exit 0
+    [ "$name" != agentnv ] || exit 0 # it has no x; always stays open
+    if [ -f "$store/$name" ]; then
+      question="Close ${name//\#/##}? Its tabs stop and come back when you open it. (y/n)"
+    else
+      question="Close ${name//\#/##} and all its tabs? (y/n)"
+    fi
+    bar confirm-before -b -t "$2" -p "$question" \
+      "run-shell -b \"~/.local/bin/agentnv _project close '$name' '$3' >/dev/null 2>&1 ; true\""
+    ;;
+  stop)
+    if [ "$2" != --now ]; then
+      sleep 1 # a window that's only being replaced
+      [ -z "$(bar list-clients 2>/dev/null)" ] || exit 0
+      bar has-session -t '=projects' 2>/dev/null || exit 0
+    fi
+    "$repo/lib/project" save-all
+    work kill-server 2>/dev/null
+    bar kill-server 2>/dev/null
+    exit 0
+    ;;
+  popup)
+    # From kitty's menu bar: agentnv in a popup, over the window that has the bar.
+    shift
+    client="$(bar list-clients -F '#{client_name}' | head -1)"
+    [ -n "$client" ] || exit 0
+    bar display-popup -c "$client" -E -w 80% -h 70% "env -u TMUX AGENTNV_POPUP=1 ~/.local/bin/agentnv ${(q)@}"
+    ;;
+  front)
+    [ -f ~/.config/agentnv/last-terminal ] && open -a "$(<~/.config/agentnv/last-terminal)"
+    exit 0
+    ;;
+  new-terminal)
+    mkdir -p ~/.config/agentnv
+    command=~/.config/agentnv/open.command
+    print -l '#!/bin/zsh -l' 'export PATH="$PATH:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin"' 'exec "$HOME/.local/bin/agentnv" continue' >"$command"
+    chmod +x "$command"
+    "$repo/lib/terminal" "$command"
+    ;;
+  *)
+    sed -n '2,17p' "${0:A}" | sed 's/^# \{0,1\}//'
+    [ "$1" = -h ] || [ "$1" = --help ]
+    ;;
+esac

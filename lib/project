@@ -1,0 +1,494 @@
+#!/bin/zsh
+# Saved projects, behind most of the agentnv command (arguments are its, resolved). A project is a name and one or more folders: one file
+# in saved-projects/ of this repo (gitignored), one folder per line. Its tmux
+# session has "nvim", lazygit and "shell 1" in the first folder, then one Neovim tab per
+# other folder. Folders themselves are never touched.
+#
+# Closing a project saves its tabs and stops everything in them, which frees the
+# memory: saved-projects/.tabs/<name> holds each tab's name, folder and splits,
+# what shells last printed, and which agent it ran. Opening it again rebuilds them,
+# and each agent continues its last conversation. Other programs aren't restarted:
+# that tab comes back as a shell.
+#
+#   new [--window] <folder> [name]    save a project and open it
+#   add [--window] <name> <folder>    add a folder to a project, made if needed, and open it
+#   remove <name> <folder>            take a folder out of a project
+#   rename <name> <new name>          rename a project
+#   delete <name>                     forget a project (a tab it has stays open)
+#   list                              names, folders, which are running
+#   refresh                           load changes to the setup, keeping everything open
+#   tab <name> [command...]           a new tab in a project; tabs <name> lists them
+#   shell                             a console that isn't a project: a tab of its own,
+#                                     gone when you close it
+#   close <name> [bar window]         save it, stop it, close its tab
+#   save-all                          save every open project and which are open
+#   finder-new <folder>...            Finder's New AgentNV Project: asks for a name
+#   finder-add <folder>...            Finder's Add to AgentNV Project: asks which one
+#
+# Used by p, open-project, projects, the bar and the Finder extension in macos/finder/.
+# --window also brings the terminal to the front, or opens one.
+
+lib="${0:A:h}"
+store="${0:A:h:h}/saved-projects"
+unset TMUX # it may be the bar's; every tmux below is yours
+bar() { command tmux -L projects "$@"; }
+
+# What brings a saved tab's program back. Anything else comes back as a shell.
+typeset -A resume=(nvim 'nvim .' lazygit lazygit)
+while IFS=$'\t' read -r key agent again where; do
+  [[ "$key" == \#* ]] && continue
+  # One with no way to continue starts fresh.
+  [ "$again" = - ] && again="$agent"
+  resume[$agent]="$again"
+done <"${0:A:h}/agents.tsv"
+
+die() {
+  print -r -- "agentnv: $1" >&2
+  exit 1
+}
+
+# Absolute folder; a file stands for the folder it's in.
+folder_of() {
+  local dir="${1:A}"
+  [ -d "$dir" ] || dir="${dir:h}"
+  print -r -- "$dir"
+}
+
+# A name that's safe as a file, tmux target and format.
+clean() {
+  local n="${1//[^[:alnum:] _-]/_}"
+  [[ "$n" == -* ]] && n="_${n#-}"
+  print -r -- "$n"
+}
+
+# Names become paths under $store, so only clean ones get near a file operation.
+check_name() {
+  [ -n "$1" ] && [ "$1" = "$(clean "$1")" ] || die "not a project name: $1"
+}
+
+# The saved project with folder $1 in it, if any.
+find_project() {
+  local f
+  for f in "$store"/*(N.); do
+    grep -qxF -- "$1" "$f" && { print -r -- "${f:t}"; return 0; }
+  done
+  return 1
+}
+
+# Saves folder $1 under a free name made from it; two folders with the same name
+# get "parent_name" for the second one. Prints the name.
+save_new() {
+  local name n=2
+  name="$(clean "${1:t}")"
+  [ -n "$name" ] || die "/ can't be a project"
+  [ -e "$store/$name" ] && name="$(clean "${1:h:t}")_$name"
+  local base="$name"
+  while [ -e "$store/$name" ]; do
+    name="${base}_$n"
+    n=$((n + 1))
+  done
+  mkdir -p "$store"
+  print -r -- "$1" >"$store/$name"
+  print -r -- "$name"
+}
+
+# A Neovim tab for folder $2 in running project $1; prints the tab's name.
+folder_tab() {
+  local tab
+  tab="$(clean "${2:t}")"
+  if tmux list-windows -t "=$1" -F '#{window_name}' | grep -qxF -- "$tab"; then
+    tab="$(clean "${2:h:t}")_$tab"
+  fi
+  # "; true" keeps a shell above Neovim, like every tab that runs a program.
+  tmux new-window -d -t "=$1:" -n "$tab" -c "$2" "nvim .; true"
+  tmux set-option -w -t "=$1:=$tab" @folder "$2" # lib/tab: new shells start here
+  tmux set-option -w -t "=$1:=$tab" @folder_tab 1 # closing it takes the folder out
+  print -r -- "$tab"
+}
+
+# Which program in resume is in the foreground on terminal $1, if any.
+program_on() {
+  local line words prog
+  ps -o stat=,command= -t "${1#/dev/}" 2>/dev/null | while IFS= read -r line; do
+    words=(${=line})
+    [[ "$words[1]" == *+* ]] || continue
+    shift words
+    [[ "$words[2]" == -c && "${words[1]:t}" == *sh ]] && shift 2 words
+    prog="${words[1]:t}"
+    [[ "$prog" == (node|bun|deno|python*) ]] && prog="${words[2]:t}"
+    prog="${prog%.js}"
+    if [ -n "$resume[$prog]" ]; then
+      print -r -- "$prog"
+      return 0
+    fi
+  done
+  return 1
+}
+
+# Saves the tabs of running project $1. Shells' output can be private: only you
+# can read what's saved.
+save() {
+  local rows
+  rows="$(tmux list-panes -s -t "=$1" -F '#{window_index}	#{window_name}	#{window_active}	#{window_layout}	#{?#{@folder},#{@folder},-}	#{pane_index}	#{pane_current_path}	#{pane_tty}	#{pane_id}	#{?#{@named},1,-}	#{?#{@folder_tab},1,-}' 2>/dev/null)"
+  [ -n "$rows" ] || return 0
+  umask 077
+  local dir="$store/.tabs/$1"
+  mkdir -p "$dir"
+  local idx win act layout folder pane where tty id named ftab prog
+  print -r -- "$rows" | while IFS=$'\t' read -r idx win act layout folder pane where tty id named ftab; do
+    prog="$(program_on "$tty")" || {
+      prog=-
+      # Up to 2000 lines, without the blank ones at the end.
+      tmux capture-pane -p -e -J -S -2000 -t "$id" | sed -e :a -e '/^[[:space:]]*$/{$d;N;ba' -e '}' >"$dir/$idx.$pane.txt"
+    }
+    print -r -- "$idx	$win	$act	$layout	$folder	$pane	$where	$prog	$named	$ftab"
+  done >"$dir/tabs.tmp"
+  mv "$dir/tabs.tmp" "$dir/tabs"
+}
+
+# Rebuilds exactly the tabs project $1 had, so one you closed stays closed; $2 is its
+# first folder.
+restore() {
+  local name="$1"
+  shift
+  local dir="$store/.tabs/$name" first="${1:-$HOME}" active="" prev="" win_id=""
+  local idx win act layout folder pane where prog named ftab
+  local cmd=()
+  typeset -A layouts
+  while IFS=$'\t' read -r idx win act layout folder pane where prog named ftab; do
+    [ -d "$where" ] || where="$first"
+    # Quit before it was saved, it's still the lazygit tab.
+    [ "$win" = lazygit ] && [ "$pane" = 1 ] && prog=lazygit
+    cmd=()
+    if [ "$prog" != - ]; then
+      # "; true" keeps a shell above it, like every tab that runs a program.
+      cmd=("$resume[$prog]; true")
+    elif [ -s "$dir/$idx.$pane.txt" ]; then
+      cmd=("cat ${(q)dir}/$idx.$pane.txt; exec ${(q)${SHELL:-/bin/zsh}}")
+    fi
+    if [ "$idx" != "$prev" ]; then
+      if tmux has-session -t "=$name" 2>/dev/null; then
+        win_id="$(tmux new-window -d -P -F '#{window_id}' -t "=$name:" -n "$win" -c "$where" "${cmd[@]}")"
+      else
+        win_id="$(tmux new-session -d -P -F '#{window_id}' -s "$name" -n "$win" -x 200 -y 50 -c "$first" "${cmd[@]}")"
+      fi
+      [ "$folder" = - ] || tmux set-option -w -t "$win_id" @folder "$folder"
+      [ "$named" != 1 ] || tmux set-option -w -t "$win_id" @named 1
+      [ "$ftab" != 1 ] || tmux set-option -w -t "$win_id" @folder_tab 1
+      [ "$act" = 1 ] && active="$win_id"
+      prev="$idx"
+    else
+      tmux split-window -d -t "$win_id" -c "$where" "${cmd[@]}"
+      layouts[$win_id]="$layout"
+    fi
+  done <"$dir/tabs"
+  for win_id layout in "${(@kv)layouts}"; do
+    tmux select-layout -t "$win_id" "$layout"
+  done
+  [ -z "$active" ] || tmux select-window -t "$active"
+}
+
+# Every project opens with a lazygit tab beside Neovim, even if you closed it.
+ensure_lazygit() {
+  local windows
+  windows="$(tmux list-windows -t "=$1" -F '#{window_name}')"
+  print -r -- "$windows" | grep -qx lazygit && return 0
+  if print -r -- "$windows" | grep -qx nvim; then
+    tmux new-window -d -a -t "=$1:=nvim" -n lazygit -c "$2" "lazygit; true"
+  else
+    tmux new-window -d -t "=$1:" -n lazygit -c "$2" "lazygit; true"
+  fi
+}
+
+# The tmux session of project $1, unless it's running already.
+start() {
+  tmux has-session -t "=$1" 2>/dev/null && return 0
+  local folders=()
+  if [ -f "$store/$1" ]; then
+    folders=(${(f)"$(<"$store/$1")"})
+    folders=(${^folders}(N/)) # drop folders that don't exist any more
+  fi
+  if [ -s "$store/.tabs/$1/tabs" ]; then
+    restore "$1" "${folders[@]}"
+    [ "${#folders}" -eq 0 ] || ensure_lazygit "$1" "$folders[1]" # not for a console
+    return
+  fi
+  [ -f "$store/$1" ] || die "no project called $1"
+  [ "${#folders}" -gt 0 ] || die "$1 has no folders left"
+  tmux new-session -d -s "$1" -n nvim -c "$folders[1]" "nvim .; true"
+  ensure_lazygit "$1" "$folders[1]"
+  tmux new-window -d -t "=$1:" -n "shell 1" -c "$folders[1]"
+  local dir
+  for dir in "${(@)folders[2,-1]}"; do
+    folder_tab "$1" "$dir" >/dev/null
+  done
+}
+
+# Loads changes to the setup without stopping anything: both tmux configs, Neovim's
+# colours, and each running Neovim restarts with the same files and splits. Shells
+# and agents aren't touched.
+refresh() {
+  local conf="${0:A:h:h}/tmux/projects.conf"
+  nvim --headless "+lua require('base46').load_all_highlights()" +qa >/dev/null 2>&1
+  tmux source-file ~/.tmux.conf 2>/dev/null
+  bar source-file "$conf" 2>/dev/null
+  local state="${XDG_STATE_HOME:-$HOME/.local/state}/nvim"
+  mkdir -p "$state"
+  local tty id file count=0
+  tmux list-panes -a -F '#{pane_tty}	#{pane_id}' 2>/dev/null | while IFS=$'\t' read -r tty id; do
+    [ "$(program_on "$tty")" = nvim ] || continue
+    file="$state/agentnv-refresh-${id#%}.vim"
+    tmux send-keys -t "$id" C-\\ C-n
+    tmux send-keys -t "$id" -l ":silent! wall | set sessionoptions-=terminal sessionoptions-=blank | mksession! $file | restart source $file"
+    tmux send-keys -t "$id" Enter
+    count=$((count + 1))
+  done
+  print -r -- "Refreshed: tmux, the tab bars and $count Neovim."
+}
+
+# Remembers which tabs the bar has, for the next time it opens.
+write_open() {
+  mkdir -p "$store"
+  bar list-windows -t '=projects' -F '#{window_name}' >"$store/.open" 2>/dev/null
+  bar display -p -t '=projects:' '#{window_name}' >"$store/.active" 2>/dev/null
+}
+
+save_all() {
+  local s
+  for s in ${(f)"$(tmux list-sessions -F '#{session_name}' 2>/dev/null)"}; do
+    save "$s"
+  done
+  # Keep the list of what's open if the bar has just gone.
+  bar has-session -t '=projects' 2>/dev/null && write_open
+}
+
+close() {
+  check_name "$1"
+  [ "$1" != agentnv ] || return 0 # always stays open: lib/projects
+  if [ -f "$store/$1" ]; then
+    save "$1"
+  else
+    rm -rf "$store/.tabs/$1" # a console, not a project
+  fi
+  tmux kill-session -t "=$1" 2>/dev/null
+  [ -z "$2" ] || bar kill-window -t "$2" 2>/dev/null
+  write_open
+}
+
+# A console of its own, "Shell N" with the lowest free N, in your home folder.
+new_shell() {
+  local n=1
+  while tmux has-session -t "=Shell $n" 2>/dev/null || bar list-windows -t '=projects' -F '#{window_name}' 2>/dev/null | grep -qx "Shell $n"; do
+    n=$((n + 1))
+  done
+  tmux new-session -d -s "Shell $n" -n "shell 1" -c "$HOME"
+  show "Shell $n"
+}
+
+# Opens project $1, unless asked just to save it (agentnv --no-open).
+show() {
+  [ -n "$AW_NO_OPEN" ] && return 0
+  "$lib/open-project" "${window[@]}" --project "$1"
+}
+
+new() {
+  local dir name existing
+  dir="$(folder_of "$1")"
+  if [ -n "$2" ]; then
+    name="$(clean "$2")"
+    [ -n "$name" ] || die "that name has nothing usable in it"
+    if [ -f "$store/$name" ]; then
+      grep -qxF -- "$dir" "$store/$name" || die "$name exists already: use agentnv add"
+    else
+      mkdir -p "$store"
+      print -r -- "$dir" >"$store/$name"
+    fi
+  elif existing="$(find_project "$dir")"; then
+    name="$existing"
+  else
+    name="$(save_new "$dir")" || exit 1
+  fi
+  show "$name"
+}
+
+add() {
+  local name="$1" dir tab=""
+  check_name "$name"
+  dir="$(folder_of "$2")"
+  mkdir -p "$store"
+  # A session with no saved project yet: its own folder comes first.
+  if [ ! -f "$store/$name" ]; then
+    if tmux has-session -t "=$name" 2>/dev/null; then
+      tmux display -p -t "=$name:" '#{session_path}' >"$store/$name"
+    else
+      print -r -- "$dir" >"$store/$name" # a new project
+    fi
+  fi
+  if ! grep -qxF -- "$dir" "$store/$name"; then
+    print -r -- "$dir" >>"$store/$name"
+    if tmux has-session -t "=$name" 2>/dev/null; then
+      tab="$(folder_tab "$name" "$dir")"
+    elif [ -s "$store/.tabs/$name/tabs" ]; then
+      # Closed: its saved tabs get this folder's, for when it opens.
+      local last
+      last="$(cut -f1 "$store/.tabs/$name/tabs" | sort -n | tail -1)"
+      print -r -- "$((last + 1))	$(clean "${dir:t}")	0	-	$dir	1	$dir	nvim	-	1" >>"$store/.tabs/$name/tabs"
+    fi
+  fi
+  [ -n "$tab" ] && tmux select-window -t "=$name:=$tab"
+  show "$name"
+}
+
+# A dialog from Finder. $1 is the AppleScript, the rest its arguments. Prints what
+# was chosen; fails when cancelled.
+ask() {
+  local script="$1"
+  shift
+  osascript -e 'on run argv' -e 'activate' -e "$script" -e 'end run' "$@" 2>/dev/null
+}
+
+finder_new() {
+  local name dir
+  name="$(ask 'return text returned of (display dialog "New project name:" default answer (item 1 of argv) with title "New AgentNV Project")' "${1:A:t}")" || return 0
+  name="$(clean "$name")"
+  if [ -z "$name" ] || { [ -f "$store/$name" ] && ! grep -qxF -- "$(folder_of "$1")" "$store/$name"; }; then
+    ask 'display alert "Could not create that project" message (item 1 of argv)' "A project called \"$name\" exists already, or the name is empty. Use Add to AgentNV Project, or pick another name." >/dev/null
+    return 0
+  fi
+  window=(--window)
+  new "$1" "$name"
+  shift
+  for dir in "$@"; do
+    add "$name" "$dir"
+  done
+}
+
+finder_add() {
+  local names=("$store"/*(N.:t)) name dir
+  if [ "${#names}" -eq 0 ]; then
+    finder_new "$@"
+    return
+  fi
+  name="$(ask 'set chosen to choose from list (items of argv) with title "Add to AgentNV Project" with prompt "Add to which project?"
+  if chosen is false then error number -128
+  return item 1 of chosen' "${names[@]}")" || return 0
+  window=(--window)
+  for dir in "$@"; do
+    add "$name" "$dir"
+  done
+}
+
+window=()
+cmd="$1"
+[ $# -gt 0 ] && shift
+if [ "$1" = --window ]; then
+  window=(--window)
+  shift
+fi
+
+case "$cmd" in
+  new) [ -n "$1" ] || die "usage: agentnv new <folder> [name]"; new "$@" ;;
+  add) [ -n "$2" ] || die "usage: agentnv add <name> <folder>"; add "$@" ;;
+  ensure-self)                            # for projects: this repo, the first tab
+    mkdir -p "$store"
+    print -r -- "${0:A:h:h}" >"$store/agentnv"
+    ;;
+  remove)
+    check_name "$1"
+    [ "$1" != agentnv ] || die "agentnv always stays: it's where you update it from"
+    [ -f "$store/$1" ] || die "no project called $1"
+    gone="$(folder_of "$2")"
+    grep -vxF -- "$gone" "$store/$1" >"$store/.tmp"
+    mv "$store/.tmp" "$store/$1"
+    # Its tab goes now, and its saved tabs don't come back either.
+    for win in ${(f)"$(tmux list-windows -t "=$1" -F '#{window_id}	#{@folder_tab}	#{@folder}' 2>/dev/null | awk -F'\t' -v f="$gone" '$2 == 1 && $3 == f { print $1 }')"}; do
+      tmux kill-window -t "$win"
+    done
+    if [ -f "$store/.tabs/$1/tabs" ]; then
+      awk -F'\t' -v f="$gone" '$5 != f' "$store/.tabs/$1/tabs" >"$store/.tmp"
+      mv "$store/.tmp" "$store/.tabs/$1/tabs"
+    fi
+    ;;
+  delete)
+    check_name "$1"
+    [ "$1" != agentnv ] || die "agentnv always stays: it's where you update it from"
+    # If it's open it closes first; a project you've forgotten shouldn't keep running.
+    tmux kill-session -t "=$1" 2>/dev/null
+    win="$(bar list-windows -t '=projects' -F '#{window_name}	#{window_id}' 2>/dev/null | awk -F'\t' -v n="$1" '$1 == n { print $2 }')"
+    [ -z "$win" ] || bar kill-window -t "$win" 2>/dev/null
+    rm -rf -- "$store/$1" "$store/.tabs/$1"
+    bar has-session -t '=projects' 2>/dev/null && write_open
+    ;;
+  names)
+    for f in "$store"/*(N.:t); do
+      [ "$f" = agentnv ] || print -r -- "$f"
+    done
+    ;;
+  refresh) refresh ;;
+  list)
+    for f in "$store"/*(N.); do
+      state=""
+      tmux has-session -t "=${f:t}" 2>/dev/null && state=" (running)"
+      print -r -- "${f:t}$state: ${(j:, :)${(f)"$(<"$f")"}}"
+    done
+    ;;
+  shell) new_shell ;;
+  close) close "$1" "$2" ;;
+  close-tab)                              # agentnv close: finds the bar's tab itself
+    check_name "$1"
+    [ "$1" != agentnv ] || die "agentnv always stays: it's where you update it from"
+    [ -f "$store/$1" ] || tmux has-session -t "=$1" 2>/dev/null || die "no project called $1"
+    close "$1" "$(bar list-windows -t '=projects' -F '#{window_name}	#{window_id}' 2>/dev/null | awk -F'\t' -v n="$1" '$1 == n { print $2 }')"
+    ;;
+  rename)
+    check_name "$1"
+    [ "$1" != agentnv ] || die "agentnv keeps its name"
+    new_name="$(clean "$2")"
+    [ -n "$new_name" ] || die "that name has nothing usable in it"
+    [ ! -e "$store/$new_name" ] && ! tmux has-session -t "=$new_name" 2>/dev/null || die "$new_name exists already"
+    [ -f "$store/$1" ] || tmux has-session -t "=$1" 2>/dev/null || die "no project called $1"
+    [ ! -f "$store/$1" ] || mv "$store/$1" "$store/$new_name"
+    [ ! -d "$store/.tabs/$1" ] || mv "$store/.tabs/$1" "$store/.tabs/$new_name"
+    tmux rename-session -t "=$1" "$new_name" 2>/dev/null
+    bar rename-window -t "=projects:=$1" "$new_name" 2>/dev/null
+    bar has-session -t '=projects' 2>/dev/null && write_open
+    print -r -- "$1 is now $new_name"
+    ;;
+  tab)
+    check_name "$1"
+    name="$1"
+    shift
+    start "$name" || exit 1
+    if [ $# -eq 0 ]; then
+      "$lib/tab" new "$(tmux display -p -t "=$name:" '#{session_id}')"
+    else
+      # "; true" keeps the tab as a shell when the command ends.
+      tmux new-window -t "=$name:" -n "${1:t}" -c "$(tmux display -p -t "=$name:" '#{session_path}')" "$*; true"
+    fi
+    show "$name"
+    ;;
+  tabs)
+    check_name "$1"
+    if tmux has-session -t "=$1" 2>/dev/null; then
+      tmux list-windows -t "=$1" -F '#{window_index}  #{window_name}#{?window_active,  (current),}'
+    elif [ -s "$store/.tabs/$1/tabs" ]; then
+      cut -f1,2 "$store/.tabs/$1/tabs" | uniq | sed "s/$(printf '\t')/  /"
+    elif [ -f "$store/$1" ]; then
+      print -r -- "$1 hasn't been opened yet"
+    else
+      die "no project called $1"
+    fi
+    ;;
+  save-all) save_all ;;
+  finder-new) finder_new "$@" ;;
+  finder-add) finder_add "$@" ;;
+  start) check_name "$1"; start "$1" ;;   # for open-project
+  for-folder)                             # for open-project: find or save
+    dir="$(folder_of "$1")"
+    find_project "$dir" || save_new "$dir"
+    ;;
+  *)
+    sed -n '2,29p' "${0:A}" | sed 's/^# \{0,1\}//'
+    [ -z "$cmd" ] || [ "$cmd" = -h ] || [ "$cmd" = --help ]
+    ;;
+esac

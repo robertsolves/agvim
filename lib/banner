@@ -1,0 +1,4 @@
+#!/bin/zsh
+# The AgentNV name, shown by the install, the wizard and agentnv help.
+print -r -- "AgentNV by Robert Mollentze · https://github.com/robertsolves/agentnv"
+print -r -- ""

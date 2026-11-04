@@ -8,6 +8,7 @@ brew "fd"
 brew "fzf"
 brew "lazygit"
 brew "tree-sitter-cli"
+brew "python@3.14"     # Mason's Python-based language servers and debugpy
 brew "node"           # Mason's JS-based language servers, prettierd, js-debug
 brew "imagemagick"    # images in Neovim (JPG, GIF, WebP)
 brew "librsvg"        # rsvg-convert: SVG rendered in a float

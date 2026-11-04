@@ -1,0 +1,120 @@
+#!/bin/zsh
+# agentnv open: fuzzy-pick a project to open, in this order:
+#   New project from a folder...   walk every folder on the computer, name it
+#   Add a folder to <current>...   the same, into the project you're in
+#   your saved projects            (bin/project) Ctrl-X forgets the one under the cursor
+#   other project folders          folders with .git, pubspec.yaml, Cargo.toml,
+#                                  Package.swift, pyproject.toml or package.json, up
+#                                  to 4 levels under the roots: one folder per line
+#                                  in ~/.config/agentnv/roots, else ~/Projects,
+#                                  ~/Developer, ~/code and ~/Desktop
+# Type to filter, Enter to open, Esc to cancel.
+# While walking folders: Enter or double-click goes in, ../ goes up, the top row
+# picks the folder you're in.
+
+self="${0:A}"
+store="${0:A:h:h}/saved-projects"
+project="${0:A:h}/project"
+tab=$'\t'
+
+# Every row is "<what it does><tab><what it shows>".
+rows() {
+  print -r -- "new${tab}New project from a folder…"
+  # Not a console (bin/project): it stays one.
+  if [ -n "$AW_CURRENT" ] && [[ "$AW_CURRENT" != Shell\ <-> || -f "$store/$AW_CURRENT" ]]; then
+    print -r -- "add${tab}Add a folder to $AW_CURRENT…"
+  fi
+  local f
+  for f in "$store"/*(N.); do
+    print -r -- "open:${f:t}${tab}${f:t}  (${(j:, :)${(f)"$(sed "s#^$HOME#~#" "$f")"}})"
+  done
+
+  local roots_file=~/.config/agentnv/roots roots
+  if [ -f "$roots_file" ]; then
+    roots=(${(f)"$(sed "s#^~#$HOME#" "$roots_file")"})
+  else
+    roots=(~/Projects ~/Developer ~/code ~/Desktop)
+  fi
+  roots=(${^roots}(N/)) # drop folders that don't exist
+  [ "${#roots}" -gt 0 ] || return 0 # fd would search the folder you're in
+  local markers='^(\.git|pubspec\.yaml|Cargo\.toml|Package\.swift|pyproject\.toml|package\.json)$'
+  fd --hidden --max-depth 5 --type d --type f \
+     --exclude node_modules --exclude build --exclude target --exclude .dart_tool \
+     --exclude .venv --exclude Pods --exclude .build --exclude .fvm --exclude ephemeral \
+     "$markers" "${roots[@]}" 2>/dev/null |
+    sed -E 's#/(\.git|[^/]+)/?$##' | sort -u |
+    grep -vxFf <(cat "$store"/*(N.) /dev/null) |
+    while IFS= read -r f; do
+      print -r -- "dir:$f${tab}${f/#$HOME/~}"
+    done
+}
+
+# Prints the folder picked, starting from your home folder. Folders are the rows
+# ending in /, so one can't be mistaken for the row that picks.
+browse() {
+  local dir="$HOME" pick rows names
+  while true; do
+    rows=()
+    # / has no name to give a project.
+    [ "$dir" != / ] && rows=("Use this folder: ${dir/#$HOME/~}" ../)
+    names=("$dir"/*(-/N:t) "$dir"/.*(-/N:t))
+    rows+=(${^names}/)
+    pick="$(
+      print -rl -- "${rows[@]}" |
+        fzf --height=60% --reverse --prompt="folder> " --header="${dir/#$HOME/~}" \
+            --preview="ls -A ${(q)dir}/{} 2>/dev/null"
+    )"
+    case "$pick" in
+      "") return 1 ;;
+      ../) dir="${dir:h}" ;;
+      */) dir="${dir%/}/${pick%/}" ;;
+      *) print -r -- "$dir"; return 0 ;;
+    esac
+  done
+}
+
+case "$1" in
+  --rows) rows; exit 0 ;;
+  --preview)
+    case "$2" in
+      open:*) cat "$store/${2#open:}" 2>/dev/null ;;
+      dir:*) ls -A "${2#dir:}" 2>/dev/null | head -40 ;;
+    esac
+    exit 0
+    ;;
+  --forget)
+    [[ "$2" == open:* ]] && "$project" delete "${2#open:}"
+    exit 0
+    ;;
+esac
+
+# The project you're in: this tmux's session, or from the bar's + the tab it shows.
+if [ -n "$TMUX" ]; then
+  export AW_CURRENT="$(tmux display -p '#{session_name}')"
+else
+  export AW_CURRENT="$(tmux -L projects display -p -t '=projects:' '#{window_name}' 2>/dev/null)"
+fi
+
+pick="$(
+  rows | fzf --delimiter="$tab" --with-nth=2 --query="$*" --height=60% --reverse \
+    --prompt="project> " --header="Ctrl-X forgets a saved project" \
+    --preview="${(q)self} --preview {1}" \
+    --bind="ctrl-x:execute-silent(${(q)self} --forget {1})+reload(${(q)self} --rows)"
+)"
+key="${pick%%$tab*}"
+
+case "$key" in
+  "") exit 3 ;; # Esc: the wizard goes back to its menu
+  new)
+    folder="$(browse)" || exit 3
+    print -rn -- "Project name [${folder:t}]: "
+    read -r name
+    exec "$project" new "$folder" "${name:-${folder:t}}"
+    ;;
+  add)
+    folder="$(browse)" || exit 3
+    exec "$project" add "$AW_CURRENT" "$folder"
+    ;;
+  open:*) exec "${0:A:h}/open-project" --project "${key#open:}" ;;
+  dir:*) exec "${0:A:h}/open-project" "${key#dir:}" ;;
+esac

@@ -1,0 +1,46 @@
+#!/bin/zsh
+# terminal [--which] <file.command>: run a script in a new window of your terminal.
+# Your choice if you made one (agentnv terminal), else kitty, which comes with AgentNV
+# and gets macos/kitty.conf for these windows. Without kitty: the one you last ran
+# agentnv in, else the first installed below, with Terminal last since it may not draw
+# Neovim's icons and colours well. --which only says which one. Used by the AgentNV
+# app and Finder's menu.
+
+script="${1:A}"
+config=~/.config/agentnv
+
+installed() {
+  local name
+  for name in kitty Ghostty WezTerm iTerm Alacritty; do
+    for dir in /Applications ~/Applications; do
+      [ -d "$dir/$name.app" ] && { print -r -- "$dir/$name.app"; return 0; }
+    done
+  done
+  print -r -- /System/Applications/Utilities/Terminal.app
+}
+
+app=""
+[ -f "$config/terminal" ] && app="$(<"$config/terminal")"
+[ -d "$app" ] || app="$(installed)"
+if [ "${app:t}" != kitty.app ] && [ ! -f "$config/terminal" ] && [ -f "$config/last-terminal" ]; then
+  last="$(<"$config/last-terminal")"
+  [ "${last:t}" = Terminal.app ] || [ ! -d "$last" ] || app="$last"
+fi
+if [ "$1" = --which ]; then
+  print -r -- "$app"
+  exit 0
+fi
+
+font="JetBrainsMono Nerd Font"
+case "${app:t}" in
+  kitty.app)
+    configs=()
+    [ -f ~/.config/kitty/kitty.conf ] && configs+=(--config ~/.config/kitty/kitty.conf)
+    configs+=(--config "${0:A:h:h}/macos/kitty.conf")
+    open -n -a "$app" --args "${configs[@]}" /bin/zsh "$script"
+    ;;
+  Ghostty.app) open -n -a "$app" --args "--font-family=$font" --macos-option-as-alt=left -e /bin/zsh "$script" ;;
+  WezTerm.app) open -n -a "$app" --args start -- /bin/zsh "$script" ;;
+  Alacritty.app) open -n -a "$app" --args -e /bin/zsh "$script" ;;
+  *) open -a "$app" "$script" ;; # iTerm, Terminal and others run .command files
+esac

@@ -1,0 +1,36 @@
+#!/bin/zsh
+# open-project [--window] [dir | --project <name>]: open (or return to) a project:
+# the saved project with that folder in it (one is saved if none has), or <name>.
+# Each project is a tab of the projects bar along the top (bin/projects), showing
+# a tmux session of its own. In it, tmux's tabs along the bottom are full-screen
+# windows: "nvim" (Neovim), then "shell 1", "shell 2"... (+ Shell or Alt-t adds
+# one). Every window starts in the project folder. Closing the workspace saves and
+# stops them all (bin/project); opening it again brings them back.
+# Used by agentnv, p, project and the bar (--window: also bring the terminal to the front, or open one).
+
+unset TMUX # it may be the bar's; every tmux below is yours
+
+window=0
+if [ "$1" = --window ]; then
+  window=1
+  shift
+fi
+if [ "$1" = --project ]; then
+  name="$2"
+else
+  name="$("${0:A:h}/project" for-folder "${1:-$PWD}")" || exit 1
+fi
+"${0:A:h}/project" start "$name" || exit 1
+"${0:A:h}/projects" show "$name"
+
+# Shown already in whichever terminal has the bar open.
+if [ -n "$(tmux -L projects list-clients 2>/dev/null)" ]; then
+  [ "$window" = 1 ] && "${0:A:h}/projects" front
+elif [ -n "$AW_NO_ATTACH" ]; then
+  : # the bar's own picker: it attaches next
+elif [ "$window" = 1 ]; then
+  "${0:A:h}/projects" new-terminal # from Finder: there's no terminal to use
+else
+  exec "${0:A:h}/projects" # in this terminal
+fi
+exit 0

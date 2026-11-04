@@ -16,9 +16,11 @@ return {
     },
     config = function(_, opts)
       -- Neovim runs in a project's tmux, shown inside the projects bar's tmux
-      -- (tmux/projects.conf) in kitty. snacks wraps image data for one tmux;
-      -- wrap it once more so the outer one passes it on to kitty too.
-      if vim.env.TMUX and vim.trim(vim.fn.system { "tmux", "display", "-p", "#{client_termname}" }):match "^tmux" then
+      -- (tmux/projects.conf). snacks wraps image data for one tmux; wrap it once
+      -- more so the outer one passes it on, when the terminal around the bar can
+      -- show it (kitty's graphics protocol).
+      local outer = vim.fn.system { "tmux", "-L", "projects", "list-clients", "-F", "#{client_termname}" }
+      if vim.env.TMUX and (outer:match "kitty" or outer:match "ghostty") then
         vim.env.SNACKS_KITTY = "1"
         local terminal = require "snacks.image.terminal"
         terminal.write = function(data)

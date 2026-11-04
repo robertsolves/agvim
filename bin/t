@@ -1,3 +1,0 @@
-#!/bin/zsh
-# t [dir]: open the tmux workspace (Neovim + shell) for this folder, or for dir.
-exec open-project "${1:-$PWD}"

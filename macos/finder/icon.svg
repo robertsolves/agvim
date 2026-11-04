@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- The Neovim logo by Jason Long (neovim.io, CC BY 3.0), recoloured white. -->
+  <rect x="124" y="124" width="776" height="776" rx="170" fill="#000" stroke="#fff" stroke-width="40"/>
+  <g transform="translate(283.36 232.00) scale(0.76087) translate(1 4)">
+      <path d="M0,155.437209 L26.1659448,129 L155,320.997949 L154.999997,727 L0,572.201847 L0,155.437209 Z" fill="#fff"/>
+      <path d="M443.060403,156.91391 L599.999996,-1 L600,403.297284 L468.704944,601 C468.704944,600.999977 442,571.971417 442,571.971417 L443.060403,156.91391 Z" fill="#fff"/>
+      <path d="M154.986294,0 L558,615.189696 L445.224605,728 L42,114.172017 L154.986294,0 Z" fill="#fff" stroke="#000" stroke-width="20" paint-order="stroke"/>
+  </g>
+</svg>

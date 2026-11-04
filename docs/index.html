@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AgentNV</title>
+<meta name="description" content="A Neovim workspace for Mac that makes agentic coding simple.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+  :root { color-scheme: dark; --bg: #1a1b26; --panel: #16161e; --text: #c0caf5; --dim: #9aa5ce; --link: #7aa2f7; --line: #292e42; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  main { max-width: 680px; margin: 0 auto; padding: 56px 16px; }
+  img.logo { display: block; width: 96px; height: 96px; margin-bottom: 16px; }
+  h1 { font-size: 40px; line-height: 1.1; margin: 0 0 8px; }
+  h2 { font-size: 20px; margin: 40px 0 8px; }
+  p { margin: 0 0 16px; }
+  .lead { font-size: 20px; color: var(--dim); }
+  a { color: var(--link); }
+  pre { margin: 0 0 16px; padding: 14px 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.5 ui-monospace, Menlo, monospace; }
+  .button { display: inline-block; padding: 10px 18px; background: var(--link); color: var(--panel); border-radius: 8px; font-weight: 600; text-decoration: none; }
+  ul { margin: 0 0 16px; padding: 0; list-style: none; columns: 2; column-gap: 24px; }
+  li { break-inside: avoid; }
+  footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--dim); font-size: 14px; }
+  @media (max-width: 480px) { ul { columns: 1; } h1 { font-size: 32px; } }
+</style>
+</head>
+<body>
+<main>
+  <img class="logo" src="icon.svg" alt="AgentNV logo">
+  <h1>AgentNV</h1>
+  <p class="lead">A Neovim workspace for Mac that makes agentic coding easy.</p>
+
+  <p>Big IDEs like VS Code were built for people typing every line. Now that agents can do so much of that, most of an IDE just gets in the way. What's left to do is read code, review changes and keep your agents organised, and that only takes something simple.</p>
+  <p>AgentNV gives each project its own tab, with Neovim, lazygit, shells and your agents side by side: Claude, Codex, Copilot, Gemini, DeepSeek, OpenCode and more. Close a project and it stops using memory. Open it again and your tabs come back, with agents continuing where they left off.</p>
+  <p>As you type, AI suggestions appear and Tab accepts them. That's free through Copilot's free tier, or through your own key for Claude, OpenAI, Gemini, DeepSeek and many others.</p>
+
+  <h2>Install</h2>
+  <p>In a terminal:</p>
+  <pre><code>curl -fsSL https://raw.githubusercontent.com/robertsolves/agentnv/main/install.sh | bash</code></pre>
+  <p>Or download the app, drag it to Applications and open it:</p>
+  <p><a class="button" href="https://github.com/robertsolves/agentnv/releases/latest/download/AgentNV.dmg">Download AgentNV.dmg</a></p>
+  <p>Either way it sets up what's missing once, then opens in kitty. macOS may ask you to allow the app in System Settings → Privacy &amp; Security → Open Anyway.</p>
+
+  <h2>Learn more</h2>
+  <p><a href="https://github.com/robertsolves/agentnv">GitHub</a> · <a href="https://github.com/robertsolves/agentnv/blob/main/docs/GUIDE.md">Guide</a> · <a href="https://github.com/robertsolves/agentnv/blob/main/CONTRIBUTING.md">Contributing</a></p>
+
+  <h2>Built on</h2>
+  <ul>
+    <li><a href="https://neovim.io/doc/">Neovim</a></li>
+    <li><a href="https://nvchad.com/docs/quickstart/install">NvChad</a></li>
+    <li><a href="https://github.com/tmux/tmux/wiki">tmux</a></li>
+    <li><a href="https://github.com/jesseduffield/lazygit">lazygit</a></li>
+    <li><a href="https://sw.kovidgoyal.net/kitty/">kitty</a></li>
+    <li><a href="https://docs.brew.sh">Homebrew</a></li>
+    <li><a href="https://git-scm.com/doc">Git</a></li>
+    <li><a href="https://github.com/junegunn/fzf">fzf</a></li>
+    <li><a href="https://github.com/sharkdp/fd">fd</a></li>
+    <li><a href="https://github.com/BurntSushi/ripgrep">ripgrep</a></li>
+    <li><a href="https://tree-sitter.github.io/tree-sitter/">Tree-sitter</a></li>
+    <li><a href="https://nodejs.org/docs/latest/api/">Node.js</a></li>
+    <li><a href="https://docs.python.org/3/">Python</a></li>
+    <li><a href="https://imagemagick.org/">ImageMagick</a></li>
+    <li><a href="https://gitlab.gnome.org/GNOME/librsvg">librsvg</a></li>
+    <li><a href="https://github.com/SolaWing/xcode-build-server">xcode-build-server</a></li>
+    <li><a href="https://www.nerdfonts.com/">Nerd Fonts</a></li>
+  </ul>
+  <h2>Neovim plugins</h2>
+  <ul>
+    <li><a href="https://lazy.folke.io/">lazy.nvim</a></li>
+    <li><a href="https://github.com/mason-org/mason.nvim">mason.nvim</a></li>
+    <li><a href="https://github.com/zbirenbaum/copilot.lua">copilot.lua</a></li>
+    <li><a href="https://github.com/milanglacier/minuet-ai.nvim">minuet-ai.nvim</a></li>
+    <li><a href="https://github.com/WhoIsSethDaniel/mason-tool-installer.nvim">mason-tool-installer</a></li>
+    <li><a href="https://github.com/neovim/nvim-lspconfig">nvim-lspconfig</a></li>
+    <li><a href="https://github.com/nvim-treesitter/nvim-treesitter">nvim-treesitter</a></li>
+    <li><a href="https://github.com/nvim-tree/nvim-tree.lua">nvim-tree</a></li>
+    <li><a href="https://github.com/sindrets/diffview.nvim">diffview.nvim</a></li>
+    <li><a href="https://github.com/coder/claudecode.nvim">claudecode.nvim</a></li>
+    <li><a href="https://github.com/nvim-flutter/flutter-tools.nvim">flutter-tools.nvim</a></li>
+    <li><a href="https://github.com/mrcjkb/rustaceanvim">rustaceanvim</a></li>
+    <li><a href="https://github.com/saecki/crates.nvim">crates.nvim</a></li>
+    <li><a href="https://github.com/mfussenegger/nvim-dap">nvim-dap</a></li>
+    <li><a href="https://github.com/rcarriga/nvim-dap-ui">nvim-dap-ui</a></li>
+    <li><a href="https://github.com/stevearc/conform.nvim">conform.nvim</a></li>
+    <li><a href="https://github.com/folke/trouble.nvim">trouble.nvim</a></li>
+    <li><a href="https://github.com/folke/snacks.nvim">snacks.nvim</a></li>
+    <li><a href="https://github.com/folke/todo-comments.nvim">todo-comments.nvim</a></li>
+    <li><a href="https://github.com/MagicDuck/grug-far.nvim">grug-far.nvim</a></li>
+    <li><a href="https://github.com/okuuva/auto-save.nvim">auto-save.nvim</a></li>
+    <li><a href="https://github.com/christoomey/vim-tmux-navigator">vim-tmux-navigator</a></li>
+    <li><a href="https://github.com/HiPhish/rainbow-delimiters.nvim">rainbow-delimiters</a></li>
+    <li><a href="https://github.com/brianhuster/live-preview.nvim">live-preview.nvim</a></li>
+  </ul>
+
+  <footer>MIT License. By <a href="https://github.com/robertsolves">Robert Mollentze</a>. Not affiliated with Neovim. The logo uses the <a href="https://neovim.io">Neovim logo</a> by Jason Long (<a href="https://creativecommons.org/licenses/by/3.0/">CC BY 3.0</a>), recoloured white on black.</footer>
+</main>
+</body>
+</html>

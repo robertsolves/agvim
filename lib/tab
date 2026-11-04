@@ -1,0 +1,50 @@
+#!/bin/zsh
+# tab: the tabs along the bottom of a project (full-screen tmux windows).
+#
+#   tab new [session]                 new shell tab, named "shell N" with the lowest
+#                                     free N, in the folder of the tab you're on
+#   tab close <client> <window-id>    ask, then close that tab (just that terminal)
+#
+# Used by tmux.conf (Alt-t, the + Shell and x on the tab line, prefix c) and
+# Neovim's Space tn, as `agentnv _tab`. Session defaults to the one you're in.
+
+new() {
+  local s="$1" n=1
+  if [ -z "$s" ]; then
+    s="$(tmux display -p ${TMUX_PANE:+-t} ${TMUX_PANE:+"$TMUX_PANE"} '#{session_id}')"
+  fi
+  while tmux list-windows -t "$s" -F '#{window_name}' | grep -qx "shell $n"; do
+    n=$((n + 1))
+  done
+  # @folder: a tab of a project's other folders (bin/project), and its shells.
+  local dir
+  dir="$(tmux display -p -t "$s" '#{@folder}')"
+  tmux new-window -t "$s:" -c "${dir:-$(tmux display -p -t "$s" '#{session_path}')}" -n "shell $n"
+  [ -z "$dir" ] || tmux set-option -w -t "$s:" @folder "$dir"
+}
+
+close() {
+  # Run from run-shell, which shows any output or a non-zero exit in the pane
+  # (view mode: it swallows every key and click): -b returns at once with 0.
+  local name
+  name="$(tmux display -p -t "$2" '#{window_name}')" || return 0
+  # A project's other folder: closing its tab takes the folder out of the project.
+  if [ "$(tmux display -p -t "$2" '#{@folder_tab}')" = 1 ]; then
+    local project folder
+    project="$(tmux display -p -t "$2" '#{session_name}')"
+    folder="$(tmux display -p -t "$2" '#{@folder}')"
+    tmux confirm-before -b -t "$1" -p "Close ${name//\#/##} and take it out of ${project//\#/##}? (y/n)" \
+      "kill-window -t '$2' ; run-shell -b \"~/.local/bin/agentnv _project remove '${project//\'/}' '${folder//\'/\'\\\'\'}' >/dev/null 2>&1 ; true\""
+    return 0
+  fi
+  tmux confirm-before -b -t "$1" -p "Close ${name//\#/##}? (y/n)" "kill-window -t '$2'"
+}
+
+case "$1" in
+  new) new "$2" ;;
+  close) close "$2" "$3" ;;
+  *)
+    sed -n '2,8p' "${0:A}" | sed 's/^# \{0,1\}//'
+    [ -z "$1" ] || [ "$1" = -h ] || [ "$1" = --help ]
+    ;;
+esac
