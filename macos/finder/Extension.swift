@@ -15,7 +15,9 @@ final class FinderExtension: FIFinderSync {
   override func menu(for menuKind: FIMenuKind) -> NSMenu? {
     guard menuKind == .contextualMenuForItems || menuKind == .contextualMenuForContainer else { return nil }
     let menu = NSMenu(title: "")
-    let icon = themed(Bundle(for: FinderExtension.self).image(forResource: "menu-icon"))
+    // Silver with a dark edge reads on light and dark menus as it is. Other icons get coloured by themed().
+    let icon = Bundle(for: FinderExtension.self).image(forResource: "menu-icon")
+    icon?.size = NSSize(width: 16, height: 16)
     menu.addItem(withTitle: "New AgVim Project", action: #selector(newProject(_:)), keyEquivalent: "").image = icon
     menu.addItem(withTitle: "Add to AgVim Project", action: #selector(addToProject(_:)), keyEquivalent: "").image = icon
     if menuKind == .contextualMenuForItems {

@@ -12,7 +12,7 @@ Or type `agvim` in any terminal. It asks what you want to do.
 
 **Tabs** inside a project run along the bottom, each full screen: Neovim, lazygit, a shell, and as many more shells and agents as you want. What you closed stays closed, including a project's other folders, which also leave the project. Only lazygit always comes back when you open a project, along with the `agvim` tab. `+ Shell` adds a shell.
 
-**The look**: Tokyo Night, dark, in Neovim, the tab bars and shells, with highlighting for Dart and Flutter, Rust, Python, TypeScript, Bash, JSON, Swift, Lua, YAML, TOML, Markdown and more. In Neovim, `Space th` picks another theme.
+**The look**: near-black with silver, based on the dark_horizon theme, in Neovim, the tab bars and shells, with highlighting for Dart and Flutter, Rust, Python, TypeScript, Bash, JSON, Swift, Lua, YAML, TOML, Markdown and more. In Neovim, `Space th` picks another theme, though the silver overrides in `nvim/lua/chadrc.lua` only apply to this one.
 
 **Agents**: AgVim works with Claude, Codex, Copilot, Gemini, DeepSeek, OpenCode, Kilo, Freebuff, Cursor, Aider, Amp and Qwen. Install the ones you use; `agvim agents` shows which are ready and where to get the rest. In Neovim, `Space t` then a key starts one: `c` Claude, `x` Codex, `p` Copilot, `g` Gemini, `d` DeepSeek, `o` OpenCode, `k` Kilo, `f` Freebuff, `u` Cursor, `a` Aider, `m` Amp, `q` Qwen. Claude starts connected to Neovim, so it sees your selection and shows its edits as diffs. DeepSeek uses [DeepSeek TUI](https://github.com/Hmbown/DeepSeek-TUI), a third-party tool.
 

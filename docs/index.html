@@ -3,47 +3,184 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AgVim</title>
-<meta name="description" content="A Neovim workspace for Mac that makes agentic coding simple.">
+<title>AgVim: a Neovim workspace for agentic coding on Mac</title>
+<meta name="description" content="AgVim is a free, open source Neovim workspace for Mac. Each project gets tabs for Neovim, lazygit, shells and coding agents like Claude, Codex and Copilot.">
+<link rel="canonical" href="https://robertsolves.github.io/agvim/">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#000000">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="AgVim">
+<meta property="og:title" content="AgVim: a Neovim workspace for agentic coding on Mac">
+<meta property="og:description" content="AgVim is a free, open source Neovim workspace for Mac. Each project gets tabs for Neovim, lazygit, shells and coding agents like Claude, Codex and Copilot.">
+<meta property="og:url" content="https://robertsolves.github.io/agvim/">
+<meta property="og:image" content="https://robertsolves.github.io/agvim/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="The silver AgVim logo beside the name AgVim on a black background">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="AgVim: a Neovim workspace for agentic coding on Mac">
+<meta name="twitter:description" content="AgVim is a free, open source Neovim workspace for Mac. Each project gets tabs for Neovim, lazygit, shells and coding agents like Claude, Codex and Copilot.">
+<meta name="twitter:image" content="https://robertsolves.github.io/agvim/og.png">
+<script type="application/ld+json">
+{
+ "@context": "https://schema.org",
+ "@graph": [
+  {
+   "@type": "SoftwareApplication",
+   "name": "AgVim",
+   "url": "https://robertsolves.github.io/agvim/",
+   "description": "AgVim is a free, open source Neovim workspace for Mac. Each project gets tabs for Neovim, lazygit, shells and coding agents like Claude, Codex and Copilot.",
+   "applicationCategory": "DeveloperApplication",
+   "operatingSystem": "macOS",
+   "image": "https://robertsolves.github.io/agvim/og.png",
+   "license": "https://opensource.org/licenses/MIT",
+   "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+   },
+   "downloadUrl": "https://github.com/robertsolves/agvim/releases/latest/download/AgVim.dmg",
+   "sameAs": "https://github.com/robertsolves/agvim",
+   "author": {
+    "@type": "Person",
+    "name": "Robert Mollentze",
+    "url": "https://github.com/robertsolves"
+   }
+  },
+  {
+   "@type": "FAQPage",
+   "mainEntity": [
+    {
+     "@type": "Question",
+     "name": "What is AgVim?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "AgVim is a free, open source Neovim workspace for Mac, built for agentic coding. Each project gets its own tab, holding full-screen tabs for Neovim, lazygit, shells and coding agents."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Is AgVim free?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Yes. AgVim is free and open source under the MIT License. AI suggestions are free through GitHub Copilot's free tier with a GitHub account. If you add your own API key, that service may charge you for what you use."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Which coding agents does AgVim work with?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "AgVim has shortcuts for Claude Code, Codex, Copilot, Gemini, DeepSeek TUI, OpenCode, Kilo, Freebuff, Cursor, Aider, Amp and Qwen. You install the agents you want to use."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Does AgVim work on Windows or Linux?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "No. AgVim is macOS only."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Do I need to install Neovim or tmux first?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "No. Setup installs what's missing once, including Homebrew, kitty, git, Neovim, tmux and lazygit. Tools you already have are kept and updated to their latest versions."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "What happens when I close a project?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Its tabs are saved and everything running in them stops, which frees the memory. When you open it again, the tabs come back, and agents with a resume command continue their last conversation. Other programs, such as dev servers, come back as a shell for you to restart."
+     }
+    }
+   ]
+  }
+ ]
+}
+</script>
 <style>
-  :root { color-scheme: dark; --bg: #1a1b26; --panel: #16161e; --text: #c0caf5; --dim: #9aa5ce; --link: #7aa2f7; --line: #292e42; }
+  :root { color-scheme: dark; --bg: #000; --text: #e6e8eb; --dim: #a4a9b1; --silver: #c8ccd2; --line: #26272b; --x: 50%; --y: 12%; }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-  main { max-width: 680px; margin: 0 auto; padding: 56px 16px; }
-  img.logo { display: block; width: 96px; height: 96px; margin-bottom: 16px; }
-  h1 { font-size: 40px; line-height: 1.1; margin: 0 0 8px; }
-  h2 { font-size: 20px; margin: 40px 0 8px; }
+  body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--text); font: 17px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  /* Silver light: a slow sweep across the page, and a glow that follows the pointer. */
+  .light { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none;
+    background: radial-gradient(520px circle at var(--x) var(--y), rgba(200, 204, 210, .16), transparent 70%); }
+  .light::before { content: ""; position: absolute; inset: -60%;
+    background: conic-gradient(from 0deg, transparent 0 18%, rgba(200, 204, 210, .11) 26%, transparent 34% 62%, rgba(255, 255, 255, .07) 70%, transparent 78%);
+    animation: turn 26s linear infinite; }
+  @keyframes turn { to { transform: rotate(360deg); } }
+  main { max-width: 680px; margin: 0 auto; padding: 72px 16px 56px; }
+  img.logo { display: block; width: 112px; height: 112px; margin-bottom: 20px; filter: drop-shadow(0 8px 36px rgba(200, 204, 210, .35)); }
+  h1 { font-size: 56px; line-height: 1.05; letter-spacing: -.02em; margin: 0 0 10px; color: var(--silver);
+    background: linear-gradient(100deg, #c8ccd2 0%, #eef1f4 30%, #fff 42%, #b4b9c0 56%, #f4f5f7 72%, #c8ccd2 100%);
+    background-size: 240% 100%; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; animation: shine 7s ease-in-out infinite alternate; }
+  @keyframes shine { from { background-position: 0% 0; } to { background-position: 100% 0; } }
+  h2 { font-size: 15px; letter-spacing: .08em; text-transform: uppercase; color: var(--silver); margin: 44px 0 12px; }
+  h3 { font-size: 17px; margin: 20px 0 4px; color: #fff; }
   p { margin: 0 0 16px; }
-  .lead { font-size: 20px; color: var(--dim); }
-  a { color: var(--link); }
-  pre { margin: 0 0 16px; padding: 14px 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.5 ui-monospace, Menlo, monospace; }
-  .button { display: inline-block; padding: 10px 18px; background: var(--link); color: var(--panel); border-radius: 8px; font-weight: 600; text-decoration: none; }
+  .lead { font-size: 21px; color: var(--text); }
+  .dim { color: var(--dim); font-size: 15px; }
+  a { color: var(--silver); text-underline-offset: 3px; }
+  a:hover { color: #fff; }
+  pre { margin: 0 0 16px; padding: 14px 16px; background: rgba(20, 20, 22, .85); border: 1px solid #3a3d42; border-radius: 10px; white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.5 ui-monospace, Menlo, monospace; }
+  .buttons { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+  .button { position: relative; overflow: hidden; display: inline-block; padding: 12px 22px; border-radius: 10px; font-weight: 650; text-decoration: none; color: #0a0a0a;
+    background: linear-gradient(135deg, #fff 0%, #dfe3e8 30%, #a9b0ba 62%, #eef1f4 100%); border: 1px solid #858c96; box-shadow: 0 6px 26px rgba(200, 204, 210, .22); }
+  .button:hover { color: #000; box-shadow: 0 8px 34px rgba(200, 204, 210, .42); }
+  .button::after { content: ""; position: absolute; inset: 0; transform: translateX(-120%); background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, .85) 50%, transparent 70%); transition: transform .6s ease; }
+  .button:hover::after { transform: translateX(120%); }
+  .button.quiet { background: rgba(20, 20, 22, .85); color: var(--text); border-color: #5f646c; box-shadow: none; }
+  .button.quiet:hover { color: #fff; border-color: var(--silver); }
   ul { margin: 0 0 16px; padding: 0; list-style: none; columns: 2; column-gap: 24px; }
   li { break-inside: avoid; }
   footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--dim); font-size: 14px; }
-  @media (max-width: 480px) { ul { columns: 1; } h1 { font-size: 32px; } }
+  @media (max-width: 480px) { ul { columns: 1; } h1 { font-size: 44px; } }
+  @media (prefers-reduced-motion: reduce) { h1, .light::before { animation: none; } .button::after { transition: none; } }
 </style>
+
 </head>
 <body>
+<div class="light"></div>
 <main>
   <img class="logo" src="icon.svg" alt="AgVim logo">
   <h1>AgVim</h1>
-  <p class="lead">A Neovim workspace for Mac that makes agentic coding easy.</p>
+  <p class="lead">A free, open source Neovim workspace for Mac that makes agentic coding easy.</p>
 
   <p>Big IDEs like VS Code were built for people typing every line. Now that agents can do so much of that, most of an IDE just gets in the way. What's left to do is read code, review changes and keep your agents organised, and that only takes something simple.</p>
-  <p>AgVim gives each project its own tab, with Neovim, lazygit, shells and your agents side by side: Claude, Codex, Copilot, Gemini, DeepSeek, OpenCode and more. Close a project and it stops using memory. Open it again and your tabs come back, with agents continuing where they left off.</p>
-  <p>As you type, AI suggestions appear and Tab accepts them. That's free through Copilot's free tier, or through your own key for Claude, OpenAI, Gemini, DeepSeek and many others.</p>
+  <p>AgVim gives each project its own tab, with full-screen tabs inside for Neovim, lazygit, shells and coding agents, one click apart. It works with Claude, Codex, Copilot, Gemini, DeepSeek, OpenCode and more; you install the ones you use. Close a project and everything in it stops, freeing the memory. Open it again and your tabs come back, and agents that can resume continue their last conversation.</p>
+  <p>As you type, AI suggestions appear and Tab accepts them. That's free through Copilot's free tier with a GitHub account, or use your own key for Claude, OpenAI, Gemini, DeepSeek and many others.</p>
 
   <h2>Install</h2>
   <p>In a terminal:</p>
   <pre><code>curl -fsSL https://raw.githubusercontent.com/robertsolves/agvim/main/install.sh | bash</code></pre>
   <p>Or download the app, drag it to Applications and open it:</p>
-  <p><a class="button" href="https://github.com/robertsolves/agvim/releases/latest/download/AgVim.dmg">Download AgVim.dmg</a></p>
-  <p>Either way it sets up what's missing once, then opens in kitty. macOS may ask you to allow the app in System Settings → Privacy &amp; Security → Open Anyway.</p>
+  <div class="buttons">
+    <a class="button" href="https://github.com/robertsolves/agvim/releases/latest/download/AgVim.dmg">Download AgVim.dmg</a>
+    <a class="button quiet" href="https://github.com/robertsolves/agvim">View on GitHub</a>
+  </div>
+  <p class="dim">Either way it sets up what's missing once, then opens in kitty. macOS may ask you to allow the app in System Settings → Privacy &amp; Security → Open Anyway.</p>
+
+  <h2>Questions</h2>
+  <h3>What is AgVim?</h3>
+  <p>AgVim is a free, open source Neovim workspace for Mac, built for agentic coding. Each project gets its own tab, holding full-screen tabs for Neovim, lazygit, shells and coding agents.</p>
+  <h3>Is AgVim free?</h3>
+  <p>Yes. AgVim is free and open source under the MIT License. AI suggestions are free through GitHub Copilot's free tier with a GitHub account. If you add your own API key, that service may charge you for what you use.</p>
+  <h3>Which coding agents does AgVim work with?</h3>
+  <p>AgVim has shortcuts for Claude Code, Codex, Copilot, Gemini, DeepSeek TUI, OpenCode, Kilo, Freebuff, Cursor, Aider, Amp and Qwen. You install the agents you want to use.</p>
+  <h3>Does AgVim work on Windows or Linux?</h3>
+  <p>No. AgVim is macOS only.</p>
+  <h3>Do I need to install Neovim or tmux first?</h3>
+  <p>No. Setup installs what's missing once, including Homebrew, kitty, git, Neovim, tmux and lazygit. Tools you already have are kept and updated to their latest versions.</p>
+  <h3>What happens when I close a project?</h3>
+  <p>Its tabs are saved and everything running in them stops, which frees the memory. When you open it again, the tabs come back, and agents with a resume command continue their last conversation. Other programs, such as dev servers, come back as a shell for you to restart.</p>
 
   <h2>Learn more</h2>
-  <p><a href="https://github.com/robertsolves/agvim">GitHub</a> · <a href="https://github.com/robertsolves/agvim/blob/main/docs/GUIDE.md">Guide</a> · <a href="https://github.com/robertsolves/agvim/blob/main/CONTRIBUTING.md">Contributing</a></p>
+  <p><a href="https://github.com/robertsolves/agvim/blob/main/docs/GUIDE.md">Guide</a> · <a href="https://github.com/robertsolves/agvim/blob/main/CONTRIBUTING.md">Contributing</a></p>
 
   <h2>Built on</h2>
   <ul>
@@ -93,7 +230,14 @@
     <li><a href="https://github.com/brianhuster/live-preview.nvim">live-preview.nvim</a></li>
   </ul>
 
-  <footer>MIT License. By <a href="https://github.com/robertsolves">Robert Mollentze</a>. Not affiliated with Neovim. The logo uses the <a href="https://neovim.io">Neovim logo</a> by Jason Long (<a href="https://creativecommons.org/licenses/by/3.0/">CC BY 3.0</a>), recoloured white on black.</footer>
+  <footer>MIT License. By <a href="https://github.com/robertsolves">Robert Mollentze</a>. Not affiliated with Neovim. The logo uses the <a href="https://neovim.io">Neovim logo</a> by Jason Long (<a href="https://creativecommons.org/licenses/by/3.0/">CC BY 3.0</a>), recoloured, on silver.</footer>
 </main>
+<script>
+  // The glow follows the pointer. Without this script the page simply keeps it at the top.
+  addEventListener("pointermove", (e) => {
+    document.documentElement.style.setProperty("--x", e.clientX + "px");
+    document.documentElement.style.setProperty("--y", e.clientY + "px");
+  }, { passive: true });
+</script>
 </body>
 </html>

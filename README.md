@@ -2,9 +2,9 @@
 
 <img src="docs/icon.svg" width="96" alt="AgVim logo">
 
-A Neovim workspace for Mac that makes agentic coding easy. Big IDEs were built for people typing every line. Now that agents can do so much of that, what's left is reading code, reviewing changes and keeping your agents organised, and that only takes something simple.
+A free, open source Neovim workspace for Mac that makes agentic coding easy. Big IDEs were built for people typing every line. Now that agents can do so much of that, what's left is reading code, reviewing changes and keeping your agents organised, and that only takes something simple.
 
-Each project gets a tab, with Neovim, lazygit, shells and agents such as Claude, Codex, Copilot, Gemini, DeepSeek and OpenCode side by side. Close a project and it stops using memory. Open it again and your tabs come back. As you type, AI suggestions appear from free Copilot or from your own Claude, OpenAI, Gemini, DeepSeek or other API key.
+Each project gets a tab, with full-screen tabs inside for Neovim, lazygit, shells and coding agents, one click apart. It works with Claude, Codex, Copilot, Gemini, DeepSeek, OpenCode and more; you install the ones you use. Close a project and everything in it stops, freeing the memory. Open it again and your tabs come back, and agents that can resume continue their last conversation. As you type, AI suggestions appear, free through Copilot's free tier with a GitHub account, or from your own Claude, OpenAI, Gemini, DeepSeek or other API key.
 
 **Website:** https://robertsolves.github.io/agvim/
 
@@ -30,4 +30,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). AgVim opens itself as its first tab, so 
 
 ## License
 
-[MIT](LICENSE). AgVim builds on many open source projects, [listed on the website](https://robertsolves.github.io/agvim/). The Neovim config starts from NvChad's starter ([its license](nvim/LICENSE)). The icon uses the [Neovim logo](https://neovim.io) by Jason Long ([CC BY 3.0](https://creativecommons.org/licenses/by/3.0/)), recoloured white on black. AgVim isn't affiliated with Neovim.
+[MIT](LICENSE). AgVim builds on many open source projects, [listed on the website](https://robertsolves.github.io/agvim/). The Neovim config starts from NvChad's starter ([its license](nvim/LICENSE)). The icon uses the [Neovim logo](https://neovim.io) by Jason Long ([CC BY 3.0](https://creativecommons.org/licenses/by/3.0/)), recoloured, on silver. AgVim isn't affiliated with Neovim.

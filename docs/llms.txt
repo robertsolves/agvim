@@ -1,0 +1,23 @@
+# AgVim
+
+> AgVim is a free, open source Neovim workspace for Mac. Each project gets tabs for Neovim, lazygit, shells and coding agents like Claude, Codex and Copilot.
+
+AgVim runs on macOS only. It is MIT licensed. Setup installs what's missing once, including Homebrew, kitty, git, Neovim, tmux and lazygit. Coding agents are installed separately.
+
+- Is AgVim free? Yes. AgVim is free and open source under the MIT License. AI suggestions are free through GitHub Copilot's free tier with a GitHub account. If you add your own API key, that service may charge you for what you use.
+- Which coding agents does AgVim work with? AgVim has shortcuts for Claude Code, Codex, Copilot, Gemini, DeepSeek TUI, OpenCode, Kilo, Freebuff, Cursor, Aider, Amp and Qwen. You install the agents you want to use.
+- Does AgVim work on Windows or Linux? No. AgVim is macOS only.
+- Do I need to install Neovim or tmux first? No. Setup installs what's missing once, including Homebrew, kitty, git, Neovim, tmux and lazygit. Tools you already have are kept and updated to their latest versions.
+- What happens when I close a project? Its tabs are saved and everything running in them stops, which frees the memory. When you open it again, the tabs come back, and agents with a resume command continue their last conversation. Other programs, such as dev servers, come back as a shell for you to restart.
+
+## Install
+
+`curl -fsSL https://raw.githubusercontent.com/robertsolves/agvim/main/install.sh | bash`
+
+Or download https://github.com/robertsolves/agvim/releases/latest/download/AgVim.dmg
+
+## Docs
+
+- [Website](https://robertsolves.github.io/agvim/)
+- [Guide](https://github.com/robertsolves/agvim/blob/main/docs/GUIDE.md): projects, tabs, agents, keys and commands
+- [Source](https://github.com/robertsolves/agvim)

@@ -1,9 +1,35 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
-  <!-- The Neovim logo by Jason Long (neovim.io, CC BY 3.0), recoloured white. -->
-  <rect x="124" y="124" width="776" height="776" rx="170" fill="#000" stroke="#fff" stroke-width="40"/>
-  <g transform="translate(283.36 232.00) scale(0.76087) translate(1 4)">
-      <path d="M0,155.437209 L26.1659448,129 L155,320.997949 L154.999997,727 L0,572.201847 L0,155.437209 Z" fill="#fff"/>
-      <path d="M443.060403,156.91391 L599.999996,-1 L600,403.297284 L468.704944,601 C468.704944,600.999977 442,571.971417 442,571.971417 L443.060403,156.91391 Z" fill="#fff"/>
-      <path d="M154.986294,0 L558,615.189696 L445.224605,728 L42,114.172017 L154.986294,0 Z" fill="#fff" stroke="#000" stroke-width="20" paint-order="stroke"/>
+  <!-- The Neovim logo by Jason Long (neovim.io, CC BY 3.0), recoloured, on shining silver. -->
+  <defs>
+    <linearGradient id="silver" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset=".22" stop-color="#dfe3e8"/>
+      <stop offset=".5" stop-color="#a9b0ba"/>
+      <stop offset=".68" stop-color="#eef1f4"/>
+      <stop offset="1" stop-color="#858c96"/>
+    </linearGradient>
+    <linearGradient id="edge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset=".5" stop-color="#8d949e"/>
+      <stop offset="1" stop-color="#5c636d"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#fff" stop-opacity="0"/>
+      <stop offset=".5" stop-color="#fff" stop-opacity=".75"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="tile"><rect x="124" y="124" width="776" height="776" rx="170"/></clipPath>
+  </defs>
+  <rect x="124" y="124" width="776" height="776" rx="170" fill="url(#silver)"/>
+  <g clip-path="url(#tile)">
+    <path d="M250 80H470L140 700V410Z" fill="url(#shine)"/>
+    <path d="M980 560V760L740 960H560Z" fill="url(#shine)" opacity=".55"/>
   </g>
+  <rect x="124" y="124" width="776" height="776" rx="170" fill="none" stroke="url(#edge)" stroke-width="36"/>
+  <g transform="translate(283.36 232.00) scale(0.76087) translate(1 4)">
+
+      <path d="M0,155.437209 L26.1659448,129 L155,320.997949 L154.999997,727 L0,572.201847 L0,155.437209 Z" fill="#14181f"/>
+      <path d="M443.060403,156.91391 L599.999996,-1 L600,403.297284 L468.704944,601 C468.704944,600.999977 442,571.971417 442,571.971417 L443.060403,156.91391 Z" fill="#14181f"/>
+      <path d="M154.986294,0 L558,615.189696 L445.224605,728 L42,114.172017 L154.986294,0 Z" fill="#14181f" stroke="#c9ced5" stroke-width="20" paint-order="stroke"/>
+    </g>
 </svg>
