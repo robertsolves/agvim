@@ -1,0 +1,239 @@
+#!/bin/zsh
+# skills: a library of skills and slash commands for coding agents, from repos or
+# folders you choose; add any of them to a project, set up for every agent it uses.
+#
+#   skills [-C folder]                  pick from the library: Tab marks several,
+#                                       Enter adds them; a ✓ one is taken out
+#   skills add <name>... [-C folder]    add just these
+#   skills remove <name>... [-C folder] take these out
+#   skills list [-C folder]             what this project has, and from where
+#   skills update                       the newest of every source
+#   skills source add <git url|folder> [name]
+#   skills source remove <name>
+#   skills source list
+#
+# Sources are in ~/.config/agvim/library (name, then a git URL or a folder), and
+# start with github.com/robertsolves/agent-commands and dart-agent-kit. Git ones are
+# kept in ~/.local/share/agvim/library. Nothing is added until you choose it. A
+# source with an install.sh like agent-commands' (commands/, skills/<name>/) is
+# installed with it: it puts the files in .agents/ and links them into each agent's
+# folder (.claude, .opencode, .gemini, .github/prompts...), and keeps a list so
+# removing is clean. Any other source's skills and commands are copied into .agents/
+# and linked into .claude/. Agents' own settings outside the project aren't touched.
+config=~/.config/agvim/library
+cache="${XDG_DATA_HOME:-$HOME/.local/share}/agvim/library"
+tab=$'\t'
+die() { print -r -- "agvim: $1" >&2; exit 1; }
+
+sources() {
+  if [ ! -f "$config" ]; then
+    mkdir -p "${config:h}"
+    print -r -- "agent-commands${tab}https://github.com/robertsolves/agent-commands.git
+dart-agent-kit${tab}https://github.com/robertsolves/dart-agent-kit.git" >"$config"
+  fi
+  grep -v '^#' "$config" | awk -F'\t' 'NF >= 2'
+}
+
+# A source's folder, cloned the first time it's needed.
+folder_of() {
+  local name="$1" where="$2"
+  if [ -d "$where" ]; then print -r -- "${where:A}"; return; fi
+  local dir="$cache/$name"
+  if [ ! -d "$dir/.git" ]; then
+    print -r -- "Getting $name..." >&2
+    mkdir -p "$cache"
+    git clone -q --depth 1 "$where" "$dir" >&2 || { print -r -- "agvim: couldn't get $name from $where" >&2; return 1; }
+  fi
+  print -r -- "$dir"
+}
+
+# One line per skill or command: source, kind, name, description.
+catalog() {
+  local name where dir f n d
+  sources | while IFS=$tab read -r name where; do
+    dir="$(folder_of "$name" "$where")" || continue
+    for f in "$dir"/skills/*/SKILL.md(N); do
+      n="${f:h:t}"
+      d="$(sed -n '2,/^---$/s/^description: *//p' "$f" | head -1 | sed 's/^>-*$//' | tr -d '"')"
+      [ -n "$d" ] || d="$(sed -n '/^description:/,/^[a-z_]*:/{/^  /p}' "$f" | head -1 | sed 's/^ *//')"
+      print -r -- "$name${tab}skill${tab}$n${tab}${d:0:110}"
+    done
+    for f in "$dir"/commands/*.md(N); do
+      n="${f:t:r}"
+      [ -d "$dir/skills/$n" ] && continue # the skill stands for it
+      d="$(sed -n '2,/^---$/s/^description: *//p' "$f" | head -1 | tr -d '"')"
+      print -r -- "$name${tab}command${tab}$n${tab}${d:0:110}"
+    done
+  done
+}
+
+project_dir() {
+  local dir="${1:-$PWD}"
+  git -C "$dir" rev-parse --show-toplevel 2>/dev/null || print -r -- "${dir:A}"
+}
+
+# What project $1 has from source $2 (its install.sh's options, or AgVim's list).
+installed_from() {
+  local dir="$1" name="$2" src="$3" repo
+  if [ -f "$src/install.sh" ]; then
+    repo="$(sed -n 's/^REPO=//p' "$src/install.sh" | head -1)"
+    [ -f "$dir/.agents/.installed/$repo.txt" ] || return 0
+    local only
+    only="$(sed -n 's/^only=//p' "$dir/.agents/.installed/$repo.options" 2>/dev/null)"
+    if [ -n "$only" ]; then
+      print -rl -- ${(s:,:)only}
+    else
+      # Installed whole, before AgVim chose for it: everything that's there.
+      catalog_of "$name" | cut -f3
+    fi
+  else
+    [ -f "$dir/.agents/.installed/agvim-$name.names" ] && cat "$dir/.agents/.installed/agvim-$name.names"
+  fi
+}
+catalog_of() { catalog | awk -F'\t' -v s="$1" '$1 == s'; }
+
+# Makes project $1 have exactly names $3... from source $2.
+apply() {
+  local dir="$1" name="$2" where src
+  shift 2
+  where="$(sources | awk -F'\t' -v s="$name" '$1 == s { print $2 }')"
+  src="$(folder_of "$name" "$where")" || return 1
+  local want=("$@")
+  if [ -f "$src/install.sh" ]; then
+    if [ "${#want}" -eq 0 ]; then
+      local repo
+      repo="$(sed -n 's/^REPO=//p' "$src/install.sh" | head -1)"
+      [ -f "$dir/.agents/.installed/$repo.txt" ] || return 0
+      bash "$src/install.sh" --project "$dir" --uninstall
+    else
+      bash "$src/install.sh" --project "$dir" --only "${(j:,:)want}"
+    fi
+    return
+  fi
+  # A plain folder: copy each into .agents/, link it into .claude/.
+  local list="$dir/.agents/.installed/agvim-$name.names" n
+  for n in ${(f)"$(cat "$list" 2>/dev/null)"}; do
+    rm -rf -- "$dir/.agents/skills/$n" "$dir/.agents/commands/$n.md" "$dir/.claude/skills/$n" "$dir/.claude/commands/$n.md"
+  done
+  mkdir -p "$dir/.agents/.installed"
+  : >"$list"
+  for n in "${want[@]}"; do
+    if [ -d "$src/skills/$n" ]; then
+      mkdir -p "$dir/.agents/skills" "$dir/.claude/skills"
+      cp -R "$src/skills/$n" "$dir/.agents/skills/$n"
+      ln -s "../../.agents/skills/$n" "$dir/.claude/skills/$n"
+    elif [ -f "$src/commands/$n.md" ]; then
+      mkdir -p "$dir/.agents/commands" "$dir/.claude/commands"
+      cp "$src/commands/$n.md" "$dir/.agents/commands/$n.md"
+      ln -s "../../.agents/commands/$n.md" "$dir/.claude/commands/$n.md"
+    else
+      continue
+    fi
+    print -r -- "$n" >>"$list"
+  done
+  [ -s "$list" ] || rm -f "$list"
+  print -r -- "Done: ${#want} from $name."
+}
+
+# Adds (+) or removes (-) names in project $2.
+change() {
+  local op="$1" dir="$2"
+  shift 2
+  local all name kind n d src where
+  all="$(catalog)"
+  typeset -A touched
+  for n in "$@"; do
+    name="$(print -r -- "$all" | awk -F'\t' -v n="$n" '$3 == n { print $1; exit }')"
+    [ -n "$name" ] || { print -r -- "agvim: no skill or command called $n in the library (agvim skills shows them)" >&2; continue; }
+    touched[$name]+=" $n"
+  done
+  for name in "${(@k)touched}"; do
+    where="$(sources | awk -F'\t' -v s="$name" '$1 == s { print $2 }')"
+    src="$(folder_of "$name" "$where")" || continue
+    local have=(${(f)"$(installed_from "$dir" "$name" "$src")"})
+    local changes=(${=touched[$name]})
+    if [ "$op" = + ]; then
+      for n in "${changes[@]}"; do (( ${have[(Ie)$n]} )) || have+=("$n"); done
+    else
+      for n in "${changes[@]}"; do have=("${(@)have:#$n}"); done
+    fi
+    apply "$dir" "$name" "${have[@]}"
+  done
+}
+
+pick() {
+  local dir="$1" all lines=() name kind n d mark src where
+  all="$(catalog)"
+  [ -n "$all" ] || die "the library is empty: agvim skills source add <git url or folder>"
+  typeset -A have
+  for name in ${(f)"$(sources | cut -f1)"}; do
+    where="$(sources | awk -F'\t' -v s="$name" '$1 == s { print $2 }')"
+    src="$(folder_of "$name" "$where")" || continue
+    for n in ${(f)"$(installed_from "$dir" "$name" "$src")"}; do have[$n]=1; done
+  done
+  while IFS=$tab read -r name kind n d; do
+    mark=" "; [ -n "$have[$n]" ] && mark="✓"
+    lines+=("$n${tab}$mark $(printf '%-30s %-8s %-15s' "$n" "$kind" "$name") $d")
+  done <<<"$all"
+  local chosen
+  chosen="$(print -rl -- "${lines[@]}" | fzf --multi --delimiter="$tab" --with-nth=2 --height=90% --reverse --no-info \
+    --header="Project: $dir. Tab marks several, Enter adds them; a ✓ one is taken out." --prompt="skills> ")" || return 0
+  local add=() remove=()
+  for n in ${(f)"$(print -r -- "$chosen" | cut -f1)"}; do
+    if [ -n "$have[$n]" ]; then remove+=("$n"); else add+=("$n"); fi
+  done
+  [ "${#add}" -eq 0 ] || change + "$dir" "${add[@]}"
+  [ "${#remove}" -eq 0 ] || change - "$dir" "${remove[@]}"
+}
+
+dir="" args=()
+cmd="$1"
+[ $# -gt 0 ] && shift
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -C) dir="$2"; shift 2 ;;
+    *) args+=("$1"); shift ;;
+  esac
+done
+dir="$(project_dir "$dir")"
+
+case "$cmd" in
+  "") pick "$dir" ;;
+  add) [ "${#args}" -gt 0 ] || die "usage: agvim skills add <name>..."; change + "$dir" "${args[@]}" ;;
+  remove) [ "${#args}" -gt 0 ] || die "usage: agvim skills remove <name>..."; change - "$dir" "${args[@]}" ;;
+  list)
+    sources | while IFS=$tab read -r name where; do
+      src="$(folder_of "$name" "$where")" || continue
+      for n in ${(f)"$(installed_from "$dir" "$name" "$src")"}; do print -r -- "$n  ($name)"; done
+    done
+    ;;
+  update)
+    for d in "$cache"/*(N/); do
+      git -C "$d" pull -q --ff-only && print -r -- "Updated ${d:t}."
+    done
+    ;;
+  source)
+    case "$args[1]" in
+      add)
+        [ -n "$args[2]" ] || die "usage: agvim skills source add <git url|folder> [name]"
+        where="$args[2]"
+        [ -d "$where" ] && where="${where:A}"
+        name="${args[3]:-${${where:t}%.git}}"
+        sources >/dev/null
+        awk -F'\t' -v s="$name" '$1 == s' "$config" | grep -q . && die "there's a source called $name already"
+        print -r -- "$name${tab}$where" >>"$config"
+        folder_of "$name" "$where" >/dev/null && print -r -- "Added $name."
+        ;;
+      remove)
+        [ -n "$args[2]" ] || die "usage: agvim skills source remove <name>"
+        sources >/dev/null
+        awk -F'\t' -v s="$args[2]" '$1 != s' "$config" >"$config.tmp" && mv "$config.tmp" "$config"
+        rm -rf -- "$cache/$args[2]"
+        ;;
+      list | "") sources | sed "s/$tab/  /" ;;
+      *) die "usage: agvim skills source [add|remove|list]" ;;
+    esac
+    ;;
+  -h | --help | help) sed -n '2,23p' "${0:A}" | sed 's/^# \{0,1\}//' ;;
+  *) die "no skills command called $cmd. See agvim skills --help" ;;
+esac

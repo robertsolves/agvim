@@ -1,15 +1,17 @@
 # Coding agents: Neovim key after Space t, name (also the command), how to continue the
-# last conversation, where to get it. One tab per column gap. Read by lib/project,
-# bin/agvim and nvim/lua/configs/terminals.lua. "-" means it starts fresh.
-c	claude	claude --continue	https://claude.com/claude-code
-x	codex	codex resume --last	https://github.com/openai/codex
-p	copilot	copilot --continue	https://github.com/features/copilot/cli
-g	gemini	gemini --resume latest	https://github.com/google-gemini/gemini-cli
-d	deepseek	deepseek resume --last	https://github.com/Hmbown/DeepSeek-TUI (third-party, not by DeepSeek)
-o	opencode	opencode --continue	https://opencode.ai
-k	kilo	kilo --continue	https://kilo.ai
-f	freebuff	freebuff --continue	https://freebuff.com
-u	cursor-agent	cursor-agent resume	https://cursor.com/cli
-a	aider	aider --restore-chat-history	https://aider.chat
-m	amp	-	https://ampcode.com
-q	qwen	-	https://github.com/QwenLM/qwen-code
+# last conversation, where to get it, and flags it always starts with ({lib} is this
+# folder): Claude's hooks and Codex's bell mark its tab when it needs you (lib/attention).
+# One tab per column gap. Read by lib/project, bin/agvim and nvim/lua/configs/terminals.lua.
+# "-" means it starts fresh, or has no flags.
+c	claude	claude --continue	https://claude.com/claude-code	--settings {lib}/claude-settings.json
+x	codex	codex resume --last	https://github.com/openai/codex	-c tui.notifications=true -c tui.notification_method=bel
+p	copilot	copilot --continue	https://github.com/features/copilot/cli	-
+g	gemini	gemini --resume latest	https://github.com/google-gemini/gemini-cli	-
+d	deepseek	deepseek resume --last	https://github.com/Hmbown/DeepSeek-TUI (third-party, not by DeepSeek)	-
+o	opencode	opencode --continue	https://opencode.ai	-
+k	kilo	kilo --continue	https://kilo.ai	-
+f	freebuff	freebuff --continue	https://freebuff.com	-
+u	cursor-agent	cursor-agent resume	https://cursor.com/cli	-
+a	aider	aider --restore-chat-history	https://aider.chat	-
+m	amp	-	https://ampcode.com	-
+q	qwen	-	https://github.com/QwenLM/qwen-code	-

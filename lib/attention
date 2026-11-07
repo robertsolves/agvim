@@ -1,0 +1,107 @@
+#!/bin/zsh
+# attention: the dot on a tab whose agent is waiting for you or has finished, and on
+# its project in the bar along the top. Showing that tab clears it.
+#
+#   attention set [waiting|done]   from an agent's hooks (Claude) or a bell (any
+#                                  agent): marks the tab of $TMUX_PANE, unless it's the
+#                                  one you're looking at; a notification too when
+#                                  AgVim's window isn't in front
+#   attention clear                the agent is working again (Claude's prompt hook)
+#   attention bell <window id>     tmux's alert-bell hook
+#   attention sync                 after you switch tabs or projects: clears what's
+#                                  shown, and updates the bar's dots
+#
+# Used as `agvim _attention`, from tmux.conf, projects.conf and lib/claude-settings.json.
+# Prints nothing and always exits 0: tmux hooks and agents run it.
+exec >/dev/null 2>&1
+unset TMUX
+bar() { command tmux -L projects "$@"; }
+
+# The window you're looking at in the project tmux, if a window shows the bar.
+visible() {
+  local tty
+  tty="$(bar display -p -t '=projects:' '#{pane_tty}')" || return 1
+  [ -n "$(bar list-clients)" ] || return 1
+  tmux list-clients -F '#{client_tty}	#{window_id}' | awk -F'\t' -v t="$tty" '$1 == t { print $2 }'
+}
+
+# Is a window showing the bar in front (tmux focus events)?
+focused() {
+  bar list-clients -F '#{client_flags}' | grep -q focused
+}
+
+# Dots on the bar: a project has one when any of its tabs (or its worktrees') has.
+# The worktree row shows them per worktree (lib/worktree render).
+sync_bar() {
+  bar has-session -t '=projects' || return 0
+  local f
+  for f in "${0:A:h:h}"/saved-projects/.worktrees/*(N.); do
+    "${0:A:h}/worktree" render "${f:t}"
+  done
+  local marked
+  marked="$(tmux list-windows -a -F '#{session_name}	#{@parent}	#{@attention}' | awk -F'\t' '$3 != "" { print $1; if ($2 != "") print $2 }' | sort -u)"
+  local win name state
+  bar list-windows -t '=projects' -F '#{window_id}	#{window_name}	#{@attention}' | while IFS=$'\t' read -r win name state; do
+    if print -r -- "$marked" | grep -qxF -- "$name"; then
+      [ -n "$state" ] || bar set-option -w -t "$win" @attention 1
+    else
+      [ -z "$state" ] || bar set-option -wu -t "$win" @attention
+    fi
+  done
+}
+
+notify() {
+  command -v osascript >/dev/null || return 0
+  focused && return 0
+  local where
+  where="$(tmux display -p -t "$1" '#{session_name} · #{window_name}')"
+  osascript -e 'on run argv' -e 'display notification (item 2 of argv) with title (item 1 of argv)' -e 'end run' \
+    "AgVim" "$2 in $where" &!
+}
+
+mark() { # window, state
+  local win="$1" state="${2:-done}" shown
+  shown="$(visible)"
+  if [ "$win" = "$shown" ] && focused; then
+    return 0 # you're looking at it
+  fi
+  tmux set-option -w -t "$win" @agent-state "$state" # stays after you look (lib/running)
+  tmux set-option -w -t "$win" @attention "$state"
+  sync_bar
+  if [ "$state" = waiting ]; then notify "$win" "An agent needs you"; else notify "$win" "An agent finished"; fi
+}
+
+case "$1" in
+  set)
+    [ -n "$TMUX_PANE" ] || exit 0
+    win="$(tmux display -p -t "$TMUX_PANE" '#{window_id}')"
+    tmux set-option -w -t "$win" @agent-state "${2:-done}"
+    mark "$win" "$2"
+    ;;
+  clear)
+    [ -n "$TMUX_PANE" ] || exit 0
+    tmux set-option -w -t "$TMUX_PANE" @agent-state working
+    tmux set-option -wu -t "$TMUX_PANE" @attention
+    sync_bar
+    ;;
+  bell)
+    # Claude's hooks say more than a bell does; don't let its bell undo "waiting".
+    [ -n "$(tmux show-options -wqv -t "$2" @attention)" ] && exit 0
+    # A shell's bell (a completion that found nothing) isn't an agent.
+    [[ "$(tmux display -p -t "$2" '#{pane_current_command}')" == (-|)(zsh|bash|fish|sh) ]] && exit 0
+    mark "$2" done
+    ;;
+  sync)
+    shown="$(visible)"
+    [ -z "$shown" ] || tmux set-option -wu -t "$shown" @attention
+    # The agent tab you looked at last is where agvim send sends (lib/send).
+    for line in ${(f)"$(tmux list-sessions -F '#{session_id}	#{window_id}	#{@agent}	#{pane_current_command}')"}; do
+      parts=("${(@s:	:)line}")
+      if [ -n "$parts[3]" ] || [[ "$parts[4]" != (-|)(zsh|bash|fish|sh|nvim|lazygit) ]]; then
+        tmux set-option -t "$parts[1]" @last-agent "$parts[2]"
+      fi
+    done
+    sync_bar
+    ;;
+esac
+exit 0

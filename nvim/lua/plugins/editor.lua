@@ -134,7 +134,15 @@ return {
             vim.cmd "DiffviewClose"
           else
             vim.cmd "stopinsert"
-            vim.cmd "DiffviewOpen"
+            -- In a worktree (lib/worktree), everything since it branched off,
+            -- committed or not; elsewhere what isn't committed yet.
+            local base = vim.env.AGVIM_BASE
+            if base and base ~= "" then
+              local fork = vim.trim(vim.fn.system { "git", "merge-base", base, "HEAD" })
+              vim.cmd("DiffviewOpen " .. (vim.v.shell_error == 0 and fork or vim.fn.fnameescape(base)))
+            else
+              vim.cmd "DiffviewOpen"
+            end
           end
         end,
         mode = { "n", "t" },

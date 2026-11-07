@@ -18,9 +18,20 @@ Or type `agvim` in any terminal. It asks what you want to do.
 
 **AI autocomplete**: suggestions appear as you type. Tab or Alt-l accepts (once you've moved through the completion menu, Tab moves through that instead), Alt-n and Alt-p ask for another, and Alt-e dismisses. It uses GitHub Copilot's free tier by default, which needs a free GitHub sign-in: choose it in the menu to sign in, or to sign in again when it expires. To add your own key, or use something free, choose **AI autocomplete** in `agvim`'s menu, or run `agvim ai`. It works with Claude, OpenAI, Gemini, DeepSeek, Mistral, Grok, Groq, OpenRouter, Together, Fireworks, Cerebras, Kimi, Z.ai and Qwen, with [free-llm-chain](https://github.com/robertsolves/free-llm-chain), and with any OpenAI-compatible service through **Custom endpoint**. It checks a new key straight away, and offers the service's own list of models where it has one; `agvim ai test` checks again later. Keys are stored in `~/.config/agvim/ai`, readable only by you. A paid key is charged for every suggestion, so check your provider's prices. Codex uses an OpenAI API key; a ChatGPT or Codex subscription login can't be used here.
 
-**Closing frees the memory.** `×` on a project, or closing the terminal window, saves its tabs and stops everything in them. Opening it again brings back the tabs with what shells last printed, and agents that can continue their last conversation do (Amp and Qwen start fresh). A project only starts when you first look at its tab. Everything is also saved every 5 minutes, in case of a crash.
+**Closing keeps your work running.** Closing the terminal window leaves every project running in the background, so a busy agent or build carries on; run `agvim` again and choose **Back to what's running** (or `agvim continue`). The `agvim` menu has a switch, **Keep terminals running after closing [on]**, and `agvim keep-running off` does the same: then closing stops everything, like `agvim stop`. The icon on a project saves its tabs and stops it. Either way the tabs are saved as you go, so after a restart or a crash opening a project brings them back with what shells last printed and the files and splits Neovim had, and agents that can continue their last conversation do (Amp and Qwen start fresh). A project only starts when you first look at its tab.
 
-Other programs, such as a dev server, are stopped and come back as a shell, so start them again. Saved shell output can include anything you printed. It stays on your Mac in `saved-projects/.tabs`, readable only by you.
+After a stop, other programs, such as a dev server, come back as a shell, so start them again. Saved shell output can include anything you printed. It stays on your Mac in `saved-projects/.tabs`, readable only by you.
+
+**Tabs you can tell apart**: each tab's name has a colour of its own from the theme, and the icon next to it closes it. Right-click a tab to rename it, give it another colour, move it or close it; drag it, or press Alt-Shift-Left / Right, to move it. Projects at the top work the same way.
+
+**Working with agents**:
+
+- **A dot when an agent needs you.** A tab whose agent is waiting for an answer, or has finished, shows a dot, and so does its project at the top. Looking at it clears it. If AgVim isn't the window in front, you get a notification too. Claude says exactly when (its hooks, set up for you); Codex and other agents that ring the terminal bell when they finish show it as well.
+- **Worktrees: a branch in a folder of its own.** The row under the projects lists `main` and each worktree of the project you're looking at. `+ Worktree` (or Alt-Shift-B, or `agvim worktree <name>`) makes a new branch in its own folder, with its own tabs, and can start an agent there, so several agents can work at once without touching each other's files. Click one to show its tabs. **Merge** shows what changed and merges it into the branch it came from, squashes it into one commit, or pushes it and opens a pull request. If the two changed the same lines, it offers to ask the worktree's agent to sort that out. The icon closes it, asking first if work would be lost. The folders are kept in `~/.local/share/agvim/worktrees`, outside your repo; files listed in a `.worktreeinclude` file (such as `.env`) are copied in. Alt-g in a worktree shows everything since it branched off.
+- **Send things to an agent.** In Neovim, `Space a>` puts the selection, or the change or line under the cursor, into the prompt of the agent you used last, with the file and line numbers, and shows its tab, unsent; `Space ae` sends the errors on that line. From a shell, `make test 2>&1 | agvim send` does the same with any output. It works for every agent.
+- **Every running agent.** Prefix a (Ctrl-Space then a), or `agvim agents --running`, lists the agents running in every project and worktree, what they're doing and how many files they changed. Enter goes there.
+- **An AGENTS.md for your project.** `agvim init` writes one with the build, test and lint commands it finds, plus a CLAUDE.md and GEMINI.md that point to it, and never overwrites a file. `agvim init --agent` then asks your agent to fill in the rest.
+- **Skills and commands from a library.** `agvim skills` (or `Space tS`) lists skills and slash commands from [agent-commands](https://github.com/robertsolves/agent-commands), dart-agent-kit and any source you add; Tab marks several, Enter adds just those to the project, set up for every agent it uses. Nothing is added unless you choose it. `Space tR` asks your agent to `/resume-session`, once you've added that command.
 
 **Finder**: right-click a folder for **New AgVim Project**, **Add to AgVim Project** and **Copy Directory**, which copies its path. If they're missing, turn on agvim Finder in System Settings → General → Login Items & Extensions → Finder.
 
@@ -30,6 +41,9 @@ Other programs, such as a dev server, are stopped and come back as a shell, so s
 |---|---|
 | Alt-1..9, `Alt-.`, `Alt-,` | go to a tab, next, previous |
 | Alt-t | new shell tab |
+| Alt-Shift-Left / Right | move this tab |
+| Alt-Shift-B | new worktree |
+| Ctrl-Space then a / m | every running agent / merge this worktree |
 | Alt-Shift-[ / ] | previous / next project |
 | Alt-g | every git change, side by side; again to go back |
 | `Space` then wait | every Neovim key |
@@ -63,15 +77,28 @@ agvim tab                    # a new shell tab
 agvim tab make -p work       # a new tab running a command
 agvim agent claude -p work   # a new tab with a coding agent
 agvim agents                 # which agents are ready, and where to get the rest
+agvim agents --running       # every running agent: Enter goes there
+cat log | agvim send         # into the prompt of the agent you used last, unsent
 agvim tabs -p work           # the tabs of a project
 agvim name build server      # rename the tab you're in
 agvim shell                  # a terminal outside any project
+
+# Agents
+agvim worktree fix-login     # a new branch in a folder of its own, with its tabs
+agvim worktree list          # this project's worktrees
+agvim merge                  # merge the worktree you're in: merge, squash or PR
+agvim worktree close fix-login
+agvim init                   # an AGENTS.md (and CLAUDE.md, GEMINI.md) for this folder
+agvim skills                 # pick skills and slash commands to add to this project
+agvim skills add resume-session
+agvim skills source add https://github.com/you/your-kit
 
 # The workspace
 agvim continue               # what was open last time
 agvim refresh                # load changes to AgVim, keeping everything open
 agvim save                   # save everything now (it's automatic too)
 agvim stop                   # save everything and stop it all
+agvim keep-running off       # closing the window stops it all (on by default)
 agvim diff [rev]             # every git change here, side by side
 agvim ai                     # AI suggestions as you type: choose a source, add a key
 agvim ai list                # every source, and which are ready
