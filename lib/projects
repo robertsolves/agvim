@@ -8,8 +8,9 @@
 #                                  you first look at it
 #   projects show <name>           give project <name> a tab and show it
 #   projects close <client> <id>   ask, then save and stop that tab's project
-#   projects stop                  when the last window has gone (the bar's hook):
-#                                  save every project, stop them, free the memory
+#   projects stop [--now]          when the last window has gone (the bar's hook):
+#                                  save every project; with keep-running off, or
+#                                  --now (agvim stop), also stop them
 #   projects front                 bring the terminal you use to the front
 #   projects new-terminal          open the workspace in a new window of your terminal
 #                                  (lib/terminal)
@@ -50,13 +51,14 @@ add() {
   bar new-window -d -t '=projects:' -n "$1" "$repo/lib/projects" run "$1"
 }
 
-# Saves every 5 minutes while the bar is up, for a crash or a power cut.
+# Saves every minute while the bar is up, for a crash or a power cut. Changes to
+# tabs also save within seconds (tmux.conf hooks, lib/project save-soon).
 autosave() {
   local pid
   pid="$(bar show -gqv @autosave)"
   [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null && return
   {
-    while sleep 300 && bar has-session -t '=projects' 2>/dev/null; do
+    while sleep 60 && bar has-session -t '=projects' 2>/dev/null; do
       "$repo/lib/project" save-all
     done
   } >/dev/null 2>&1 </dev/null &!
@@ -93,15 +95,29 @@ case "$1" in
   run)
     # What a tab of the bar runs. Nothing starts until the tab is first looked at,
     # so opening the workspace doesn't start every project at once.
-    printf '%s is closed. It starts when you look at this tab.\n' "$2"
-    while sleep 0.3; do
-      [ "$(bar display -p -t "$TMUX_PANE" '#{window_active}')" = 1 ] && break
+    name="$2"
+    while true; do
+      clear
+      printf '%s is closed. It starts when you look at this tab.\n' "$name"
+      until [ "$(bar display -p -t "$TMUX_PANE" '#{window_active}')" = 1 ]; do
+        sleep 0.3
+      done
+      if ! "$repo/lib/project" start "$name"; then
+        sleep 5 # long enough to read why
+        exit 1
+      fi
+      # Detaching the project's tmux (prefix d) would end this tab and drop the
+      # project from the bar while it keeps running, so it attaches again. By id:
+      # a renamed project is still the same session.
+      sid="$(env -u TMUX tmux display -p -t "=$name:" '#{session_id}')"
+      while env -u TMUX tmux has-session -t "$sid" 2>/dev/null; do
+        env -u TMUX tmux attach -t "$sid"
+      done
+      name="$(bar display -p -t "$TMUX_PANE" '#{window_name}')" || exit 0
+      # Closing a project takes this tab away first (lib/project close). Still
+      # here, the project stopped some other way: it comes back from its last
+      # save the next time this tab is looked at.
     done
-    if ! "$repo/lib/project" start "$2"; then
-      sleep 5 # long enough to read why
-      exit 1
-    fi
-    exec env -u TMUX tmux attach -t "=$2"
     ;;
   show)
     add "$2"
@@ -126,14 +142,31 @@ case "$1" in
       "run-shell -b \"~/.local/bin/agvim _project close '$name' '$3' >/dev/null 2>&1 ; true\""
     ;;
   stop)
+    # The bar's client-detached hook runs this with no --now. With "keep terminals
+    # running" on (the default), closing the window only saves: every project goes
+    # on running, and the next agvim shows it again as it is.
     if [ "$2" != --now ]; then
       sleep 1 # a window that's only being replaced
       [ -z "$(bar list-clients 2>/dev/null)" ] || exit 0
       bar has-session -t '=projects' 2>/dev/null || exit 0
     fi
     "$repo/lib/project" save-all
-    work kill-server 2>/dev/null
+    if [ "$2" != --now ] && [ ! -f ~/.config/agvim/keep-running-off ]; then
+      exit 0
+    fi
+    # Stop only what is AgVim's: the bar's projects and their worktrees, and
+    # consoles. Sessions you made yourself in tmux keep running. The bar goes first,
+    # so its tabs don't start their projects again as they end.
+    sessions=(${(f)"$(bar list-windows -t '=projects' -F '#{window_name}' 2>/dev/null)"})
     bar kill-server 2>/dev/null
+    for s in ${(f)"$(work list-sessions -F '#{session_name}	#{@parent}' 2>/dev/null)"}; do
+      name="${s%%$'\t'*}"
+      parent="${s#*$'\t'}"
+      if (( ${sessions[(Ie)$name]} )) || (( ${sessions[(Ie)$parent]} )) || [[ "$name" == Shell\ <-> ]]; then
+        work kill-session -t "=$name" 2>/dev/null
+      fi
+    done
+    [ -n "$(work list-sessions 2>/dev/null)" ] || work kill-server 2>/dev/null
     exit 0
     ;;
   popup)

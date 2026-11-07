@@ -10,6 +10,7 @@ print 'set -g default-terminal xterm-256color' > ~/outer.conf
 o() { tmux -L outer "$@"; }; b() { tmux -L projects "$@"; }
 win() { tmux list-windows -t '=A' -F '#W' 2>&1 | tr '\n' ',' ; echo; }
 list() { agvim list | grep -v '^agvim' | sed "s#$HOME/code/##g"; }
+agvim keep-running off >/dev/null # this test is about closing stopping things; tests/keep.sh has the default
 agvim new ~/code/a -n A --no-open; agvim add ~/code/b -p A --no-open
 o -f ~/outer.conf new-session -d -s o -x 120 -y 30 "agvim open -p A; sleep 200"; o set -g status off; sleep 3
 echo "opened:   $(win)"; list

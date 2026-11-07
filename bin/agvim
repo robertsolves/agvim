@@ -27,6 +27,8 @@
 #   agvim refresh                    load changes to AgVim, keeping everything open
 #   agvim save                       save everything now (it's automatic too)
 #   agvim stop                       save everything, stop it all, close the window
+#   agvim keep-running [on|off]      closing the window leaves everything running (on
+#                                      by default); off stops it all, like agvim stop
 #   agvim diff [rev]                 every git change here, side by side
 #   agvim ai [source|off|list]       AI suggestions as you type: free Copilot, or your key
 #                                      for Claude, OpenAI, Gemini, DeepSeek and many more
@@ -104,6 +106,18 @@ current() {
 which_project() {
   [ -n "$project" ] && { print -r -- "$project"; return; }
   current || die "not in a project: say which with -p <name>"
+}
+
+# The same, but a + Shell console counts too: it has tabs, just no saved folders.
+which_session() {
+  [ -n "$project" ] && { print -r -- "$project"; return; }
+  current && return
+  if [ -n "$TMUX" ] && [ -z "$AGVIM_POPUP" ]; then
+    local s
+    s="$(tmux display -p '#{session_name}' 2>/dev/null)"
+    [[ "$s" == Shell\ <-> ]] && { print -r -- "$s"; return; }
+  fi
+  die "not in a project: say which with -p <name>"
 }
 
 # AI autocomplete: settings are NAME=value lines in a file only you can read.
@@ -230,13 +244,21 @@ folder_arg() {
   print -r -- "$folder"
 }
 
+keep_off=~/.config/agvim/keep-running-off
+keep_state() { [ -f "$keep_off" ] && print -r -- off || print -r -- on; }
+
+# The menu. $1 is the row to start on (after a toggle, the same one again).
 wizard() {
   local rows=() open=""
   if [ -n "$AGVIM_POPUP" ]; then
     : # it's what you're looking at
   elif [ -z "$TMUX" ] && [ -n "$(tmux -L projects list-clients 2>/dev/null)" ]; then
     rows+=("continue${tab}Show what's open")
-  elif [ -z "$(tmux -L projects list-clients 2>/dev/null)" ]; then
+  elif tmux -L projects has-session -t '=projects' 2>/dev/null; then
+    # Closed with keep terminals running on: it's all still there.
+    local running=(${(f)"$(tmux -L projects list-windows -t '=projects' -F '#{window_name}' 2>/dev/null | grep -vx agvim)"})
+    rows+=("continue${tab}Back to what's running${running:+ (${(j:, :)running})}")
+  else
     # Only what still exists; the agvim tab alone isn't somewhere you left off.
     local name left=()
     if [ -s "$store/.open" ]; then
@@ -251,6 +273,7 @@ wizard() {
   fi
   rows+=(
     "open${tab}Open project"
+    "keep${tab}Keep terminals running after closing  [$(keep_state)]"
     "ai${tab}AI autocomplete ($(ai_name))"
     "rename${tab}Rename a project"
     "delete${tab}Delete a project"
@@ -260,9 +283,11 @@ wizard() {
     "uninstall${tab}Uninstall"
     "exit${tab}Exit"
   )
-  local pick
-  pick="$(print -rl -- "${rows[@]}" | fzf --delimiter="$tab" --with-nth=2 --height=~15 --reverse --no-info --prompt="agvim> ")" || return 0
-  print -r -- "${pick%%$tab*}"
+  local pick start=()
+  [ -z "$1" ] || start=(--bind "start:pos($1)")
+  pick="$(print -rl -- "${rows[@]}" | fzf --delimiter="$tab" --with-nth=2 --height=~15 --reverse --no-info --prompt="agvim> " "${start[@]}")" || return 0
+  # The row's number too, to come back to it.
+  print -r -- "${pick%%$tab*}${tab}${rows[(ie)$pick]}"
 }
 
 cmd="$1"
@@ -271,7 +296,8 @@ cmd="$1"
 # it's open already, as it would only change under you.
 case "$cmd" in
   "" | continue | open)
-    if [ -z "$AGVIM_UPDATED$AGVIM_POPUP" ] && [ -z "$(tmux -L projects list-clients 2>/dev/null)" ] && "$lib/auto-update"; then
+    # Not while projects are still running from last time either (keep terminals running).
+    if [ -z "$AGVIM_UPDATED$AGVIM_POPUP" ] && ! tmux -L projects has-session -t '=projects' 2>/dev/null && "$lib/auto-update"; then
       AGVIM_UPDATED=1 exec "$self" "$cmd" "$@"
     fi
     ;;
@@ -280,9 +306,18 @@ if [ -z "$cmd" ]; then
   [ -t 0 ] || { help; exit 0; } # nobody there to ask
   "$lib/banner"
   # Back to the menu after anything that doesn't lead into the workspace. Esc leaves.
+  row=""
   while true; do
-    cmd="$(wizard)"
+    cmd="$(wizard "$row")"
+    row="${cmd#*$tab}"
+    cmd="${cmd%%$tab*}"
     [ -n "$cmd" ] && [ "$cmd" != exit ] || exit 0
+    if [ "$cmd" = keep ]; then
+      # Flips it and shows the menu again on the same row, so it reads as a switch.
+      if [ -f "$keep_off" ]; then rm -f "$keep_off"; else mkdir -p "${keep_off:h}"; touch "$keep_off"; fi
+      continue
+    fi
+    row=""
     case "$cmd" in
       ai | rename | delete | folder | refresh | update) "$self" "$cmd" ;;
       open)
@@ -366,7 +401,7 @@ case "$cmd" in
   shell) exec "$lib/project" shell ;;
   tab)
     parse "$@"
-    target="$(which_project)" || exit 1
+    target="$(which_session)" || exit 1
     exec "$lib/project" tab "$target" "${args[@]}"
     ;;
   agent)
@@ -375,7 +410,7 @@ case "$cmd" in
     where="$(awk -F'\t' -v n="$args[1]" '$2 == n { print $4 }' "$lib/agents.tsv")"
     [ -n "$where" ] || die "no agent called $args[1]. See agvim agents"
     command -v "$args[1]" >/dev/null || die "$args[1] isn't installed. Get it from $where"
-    target="$(which_project)" || exit 1
+    target="$(which_session)" || exit 1
     exec "$lib/project" tab "$target" "$args[1]"
     ;;
   agents)
@@ -386,13 +421,14 @@ case "$cmd" in
     ;;
   tabs)
     parse "$@"
-    target="$(which_project)" || exit 1
+    target="$(which_session)" || exit 1
     exec "$lib/project" tabs "$target"
     ;;
   name)
     [ -n "$TMUX_PANE" ] || die "run it in the tab you want to rename"
-    [ $# -gt 0 ] || die "usage: agvim name <text>"
-    tmux rename-window -t "$TMUX_PANE" "${*//$'\t'/ }"
+    new_name="${*//$'\t'/ }"
+    [ -n "${new_name// /}" ] || die "usage: agvim name <text>"
+    tmux rename-window -t "$TMUX_PANE" "$new_name"
     tmux set-option -w -t "$TMUX_PANE" @named 1
     ;;
   refresh) exec "$lib/project" refresh ;;
@@ -512,6 +548,19 @@ case "$cmd" in
     if [ -n "$AGVIM_POPUP" ]; then
       print -rn -- "Press Enter to close. "
       read -r _
+    fi
+    ;;
+  keep-running)
+    case "$1" in
+      on) rm -f "$keep_off" ;;
+      off) mkdir -p "${keep_off:h}"; touch "$keep_off" ;;
+      "") ;;
+      *) die "usage: agvim keep-running [on|off]" ;;
+    esac
+    if [ -f "$keep_off" ]; then
+      print -r -- "Closing the window stops every project (their tabs are saved)."
+    else
+      print -r -- "Closing the window keeps every project running; agvim stop stops them."
     fi
     ;;
   autoupdate)
