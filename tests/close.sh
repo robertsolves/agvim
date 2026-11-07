@@ -5,6 +5,7 @@ export HOME=$base/home TMUX_TMPDIR=$base/t SHELL=/bin/zsh; mkdir -p $HOME/stubs 
 repo=$HOME/clone; mkdir -p $repo; (cd $src && git ls-files -co --exclude-standard -z | while IFS= read -r -d '' f; do [ -e "$f" ] && { mkdir -p "$repo/${f:h}"; cp -pR "$f" "$repo/$f"; }; done); git -C $repo init -q
 ln -s $repo/bin/agvim ~/.local/bin/agvim; ln -s $repo/tmux/tmux.conf ~/.tmux.conf
 for p in nvim lazygit; do print -l '#!/bin/zsh' '[[ "$*" == *--headless* ]] && exit 0' "exec -a $p sleep 1000" > ~/stubs/$p; chmod +x ~/stubs/$p; done
+[ -n "$AGVIM_TEST_TMUX" ] && cp "$AGVIM_TEST_TMUX" ~/stubs/tmux # a wrapper, for a tmux that prints tabs as _
 export PATH="$HOME/stubs:$HOME/.local/bin:$PATH"
 print 'set -g default-terminal xterm-256color' > ~/outer.conf
 o() { tmux -L outer "$@"; }; b() { tmux -L projects "$@"; }
@@ -16,7 +17,7 @@ o -f ~/outer.conf new-session -d -s o -x 120 -y 30 "agvim open -p A; sleep 200";
 echo "opened:   $(win)"; list
 C=$(tmux list-clients -t '=A' -F '#{client_name}' | head -1); W=$(tmux list-windows -t '=A' -F '#W #{window_id}' | awk '$1=="b"{print $2}')
 agvim _tab new "$(tmux display -p -t '=A:' '#{session_id}')"; sleep .4
-~/.local/bin/agvim _tab close "$C" "$W"; sleep .4; o capture-pane -p -t o | sed -E 's/ +$//' | awk 'NF' | tail -1 | cut -c1-70; o send-keys -t o y; sleep 1.5
+~/.local/bin/agvim _tab close "$C" "$W"; sleep .4; o capture-pane -p -t o | sed -E 's/ +$//' | grep 'take it out' | cut -c1-70; o send-keys -t o y; sleep 1.5
 echo "x folder: $(win)"; list; echo "mode=$(tmux display -p -t '=A:' '#{pane_in_mode}')"
 tmux kill-window -t '=A:=shell 2'; tmux kill-window -t '=A:=lazygit'; tmux new-window -d -t '=A:' -n "keep me" -c ~/code/a; sleep .3
 agvim close -p A; sleep 1; agvim add ~/code/c -p A --no-open; echo "closed, added c:"; list

@@ -1,0 +1,117 @@
+#!/bin/zsh
+# init: an AGENTS.md for a project of yours, the file every coding agent reads first,
+# the way AgVim has one for itself. It lists the build, test and lint commands it can
+# find, and adds a CLAUDE.md and GEMINI.md that just say @AGENTS.md. It never
+# overwrites a file that's there.
+#
+#   init [folder] [--agent]   --agent: then ask the agent you use there to fill it in
+#
+# Used as `agvim init`.
+lib="${0:A:h}"
+dir="."
+ask=""
+for a in "$@"; do
+  case "$a" in
+    --agent) ask=1 ;;
+    -*) print -r -- "agvim init: no option called $a" >&2; exit 1 ;;
+    *) dir="$a" ;;
+  esac
+done
+[ -d "$dir" ] || { print -r -- "agvim init: no such folder: $dir" >&2; exit 1; }
+dir="${dir:A}"
+cd "$dir" || exit 1
+
+has() { [ -e "$1" ]; }
+cmds=()
+add() { cmds+=("- $1: \`$2\`"); }
+stacks=()
+
+if has pubspec.yaml; then
+  if grep -q '^ *flutter:' pubspec.yaml; then
+    stacks+=(Flutter); add "Get packages" "flutter pub get"; add Test "flutter test"; add Lint "flutter analyze"; add Format "dart format ."
+  else
+    stacks+=(Dart); add "Get packages" "dart pub get"; add Test "dart test"; add Lint "dart analyze"; add Format "dart format ."
+  fi
+fi
+if has Cargo.toml; then
+  stacks+=(Rust); add Build "cargo build"; add Test "cargo test"; add Lint "cargo clippy --all-targets"; add Format "cargo fmt"
+fi
+if has package.json; then
+  pm=npm
+  has pnpm-lock.yaml && pm=pnpm
+  has yarn.lock && pm=yarn
+  { has bun.lockb || has bun.lock; } && pm=bun
+  stacks+=(JavaScript); add Install "$pm install"
+  # Only the scripts the project has.
+  for s in build test lint format typecheck; do
+    grep -q "\"$s\" *:" package.json && add "${(C)s}" "$pm run $s"
+  done
+fi
+if has pyproject.toml || has requirements.txt || has setup.py; then
+  stacks+=(Python)
+  if has uv.lock; then add Install "uv sync"; add Test "uv run pytest"
+  elif has poetry.lock; then add Install "poetry install"; add Test "poetry run pytest"
+  else add Test "pytest"
+  fi
+  grep -qs '\[tool.ruff' pyproject.toml && { add Lint "ruff check ."; add Format "ruff format ."; }
+fi
+if has go.mod; then
+  stacks+=(Go); add Build "go build ./..."; add Test "go test ./..."; add Lint "go vet ./..."
+fi
+if [ -n "$(print -l *.tf(N))" ]; then
+  stacks+=(Terraform); add Check "terraform init -backend=false && terraform validate"; add Format "terraform fmt -recursive"
+fi
+if has Package.swift; then
+  stacks+=(Swift); add Build "swift build"; add Test "swift test"
+fi
+if has Makefile; then
+  for s in build test lint; do grep -q "^$s:" Makefile && add "make $s" "make $s"; done
+fi
+
+made=()
+if [ ! -e AGENTS.md ]; then
+  {
+    print -r -- "# ${dir:t} (for coding agents)"
+    print
+    print -r -- "Read this before changing anything. Keep it short and true: fix it when it's wrong."
+    print
+    print -r -- "## What this is"
+    print
+    if [ ${#stacks} -gt 0 ]; then
+      print -r -- "A ${(j:, :)stacks} project. <!-- One or two lines: what it does, who uses it. -->"
+    else
+      print -r -- "<!-- One or two lines: what it does, who uses it. -->"
+    fi
+    print
+    print -r -- "## Commands"
+    print
+    if [ ${#cmds} -gt 0 ]; then
+      print -rl -- "${(u)cmds[@]}"
+      print
+      print -r -- "Run the tests and the linter after every change, and fix what they find."
+    else
+      print -r -- "<!-- How to build, test and lint it. -->"
+    fi
+    print
+    print -r -- "## Rules"
+    print
+    print -r -- "<!-- What an agent must always or never do here: folders not to touch, how to name things, how to commit. -->"
+  } >AGENTS.md
+  made+=(AGENTS.md)
+fi
+for f in CLAUDE.md GEMINI.md; do
+  [ -e "$f" ] && continue
+  print -r -- "@AGENTS.md" >"$f"
+  made+=("$f")
+done
+
+if [ ${#made} -gt 0 ]; then
+  print -r -- "Wrote ${(j:, :)made} in $dir."
+else
+  print -r -- "$dir has AGENTS.md, CLAUDE.md and GEMINI.md already. Nothing changed."
+fi
+if [ -n "$ask" ]; then
+  "$lib/send" "Read this repo and fill in AGENTS.md: what it is, the real build, test and lint commands (check they run), and the rules someone new would need. Keep it short. Don't change any other file." \
+    && print -r -- "Asked your agent to fill it in: press Enter in its tab."
+fi
+exit 0

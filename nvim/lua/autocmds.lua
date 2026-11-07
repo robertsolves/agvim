@@ -56,3 +56,5 @@ autocmd({ "BufEnter", "WinEnter" }, {
 require "configs.session"
 -- :AgvimRefresh, which agvim refresh sends to each running Neovim.
 require "configs.refresh"
+-- The tabs' colours follow the theme.
+require "configs.tab_colours"

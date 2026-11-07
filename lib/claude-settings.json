@@ -1,0 +1,13 @@
+{
+  "hooks": {
+    "Notification": [
+      { "hooks": [{ "type": "command", "command": "~/.local/bin/agvim _attention set waiting" }] }
+    ],
+    "Stop": [
+      { "hooks": [{ "type": "command", "command": "~/.local/bin/agvim _attention set done" }] }
+    ],
+    "UserPromptSubmit": [
+      { "hooks": [{ "type": "command", "command": "~/.local/bin/agvim _attention clear" }] }
+    ]
+  }
+}

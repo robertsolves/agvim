@@ -36,12 +36,17 @@ bar() { command tmux -L projects "$@"; }
 nvim_sessions="${XDG_STATE_HOME:-$HOME/.local/state}/nvim/agvim-sessions"
 
 # What brings a saved tab's program back. Anything else comes back as a shell.
+# An agent starts with its flags (agents.tsv), and continues with them too.
 typeset -A resume=(nvim 'nvim .' lazygit lazygit)
-while IFS=$'\t' read -r key agent again where; do
+typeset -A launch
+while IFS=$'\t' read -r key agent again where flags; do
   [[ "$key" == \#* ]] && continue
+  [ "$flags" = - ] && flags=""
+  flags="${flags//\{lib\}/${(q)lib}}"
   # One with no way to continue starts fresh.
   [ "$again" = - ] && again="$agent"
-  resume[$agent]="$again"
+  resume[$agent]="$again${flags:+ $flags}"
+  launch[$agent]="$agent${flags:+ $flags}"
 done <"${0:A:h}/agents.tsv"
 
 die() {
@@ -131,17 +136,17 @@ program_on() {
 # can read what's saved.
 save() {
   # Half built or half closed: saving now would lose the tabs not there yet.
-  [ "$(tmux show-options -qv -t "=$1" @restoring 2>/dev/null)" != 1 ] || return 0
-  [ "$(tmux show-options -qv -t "=$1" @closing 2>/dev/null)" != 1 ] || return 0
+  [ "$(tmux show-options -qv -t "=$1:" @restoring 2>/dev/null)" != 1 ] || return 0
+  [ "$(tmux show-options -qv -t "=$1:" @closing 2>/dev/null)" != 1 ] || return 0
   local rows
-  rows="$(tmux list-panes -s -t "=$1" -F '#{window_index}	#{?#{window_name},#{window_name},shell}	#{window_active}	#{window_layout}	#{?#{@folder},#{@folder},-}	#{pane_index}	#{?#{pane_current_path},#{pane_current_path},-}	#{pane_tty}	#{pane_id}	#{?#{@named},1,-}	#{?#{@folder_tab},1,-}' 2>/dev/null)"
+  rows="$(tmux list-panes -s -t "=$1" -F '#{window_index}	#{?#{window_name},#{window_name},shell}	#{window_active}	#{window_layout}	#{?#{@folder},#{@folder},-}	#{pane_index}	#{?#{pane_current_path},#{pane_current_path},-}	#{pane_tty}	#{pane_id}	#{?#{@named},1,-}	#{?#{@folder_tab},1,-}	#{?#{@colour},#{@colour},-}' 2>/dev/null)"
   [ -n "$rows" ] || return 0
   umask 077
   local dir="$store/.tabs/$1"
   mkdir -p "$dir"
   rm -f "$dir"/*.vim(N)
-  local idx win act layout folder pane where tty id named ftab prog
-  print -r -- "$rows" | while IFS=$'\t' read -r idx win act layout folder pane where tty id named ftab; do
+  local idx win act layout folder pane where tty id named ftab colour prog
+  print -r -- "$rows" | while IFS=$'\t' read -r idx win act layout folder pane where tty id named ftab colour; do
     prog="$(program_on "$tty")" && {
       # Neovim keeps its open files, splits and cursors in a session file for its
       # pane (configs/session.lua); it comes back with them.
@@ -154,7 +159,7 @@ save() {
     }
     # No field may be empty: IFS=$'\t' read joins two tabs in a row, and every
     # field after an empty one would move one column left.
-    print -r -- "$idx	${win:-shell}	${act:-0}	${layout:--}	${folder:--}	${pane:-1}	${where:--}	${prog:--}	${named:--}	${ftab:--}"
+    print -r -- "$idx	${win:-shell}	${act:-0}	${layout:--}	${folder:--}	${pane:-1}	${where:--}	${prog:--}	${named:--}	${ftab:--}	${colour:--}"
   done >"$dir/tabs.tmp"
   mv "$dir/tabs.tmp" "$dir/tabs"
 }
@@ -165,10 +170,10 @@ restore() {
   local name="$1"
   shift
   local dir="$store/.tabs/$name" first="${1:-$HOME}" active="" prev="" win_id=""
-  local idx win act layout folder pane where prog named ftab
+  local idx win act layout folder pane where prog named ftab colour
   local cmd=()
   typeset -A layouts
-  while IFS=$'\t' read -r idx win act layout folder pane where prog named ftab; do
+  while IFS=$'\t' read -r idx win act layout folder pane where prog named ftab colour; do
     [ "$where" != - ] && [ -d "$where" ] || where="$first"
     # Quit before it was saved, it's still the lazygit tab.
     [ "$win" = lazygit ] && [ "$pane" = 1 ] && prog=lazygit
@@ -193,6 +198,8 @@ restore() {
       [ "$folder" = - ] || tmux set-option -w -t "$win_id" @folder "$folder"
       [ "$named" != 1 ] || tmux set-option -w -t "$win_id" @named 1
       [ "$ftab" != 1 ] || tmux set-option -w -t "$win_id" @folder_tab 1
+      [ "${colour:--}" = - ] || "$lib/colours" keep work "$win_id" "$colour"
+      [ -z "$launch[$prog]" ] || tmux set-option -w -t "$win_id" @agent "$prog"
       [ "$act" = 1 ] && active="$win_id"
       prev="$idx"
     else
@@ -238,17 +245,21 @@ ensure_lazygit() {
 # The tmux session of project $1, unless it's running already.
 start() {
   tmux has-session -t "=$1" 2>/dev/null && return 0
-  local folders=()
+  local folders=() wt=""
   if [ -f "$store/$1" ]; then
     folders=(${(f)"$(<"$store/$1")"})
     folders=(${^folders}(N/)) # drop folders that don't exist any more
+  else
+    # A worktree of a project (lib/worktree): its one folder.
+    wt="$(cat "$store"/.worktrees/*(N.) 2>/dev/null | awk -F'\t' -v s="$1" '$1 == s { print $3; exit }')"
+    [ -n "$wt" ] && [ -d "$wt" ] && folders=("$wt")
   fi
   if [ -s "$store/.tabs/$1/tabs" ]; then
     restore "$1" "${folders[@]}"
     [ "${#folders}" -eq 0 ] || ensure_lazygit "$1" "$folders[1]" # not for a console
     return
   fi
-  [ -f "$store/$1" ] || die "no project called $1"
+  [ -f "$store/$1" ] || [ -n "$wt" ] || die "no project called $1"
   [ "${#folders}" -gt 0 ] || die "$1 has no folders left"
   tmux new-session -d -s "$1" -n nvim -c "$folders[1]" "nvim .; true"
   ensure_lazygit "$1" "$folders[1]"
@@ -290,7 +301,9 @@ write_open() {
     mv "$store/.open.tmp" "$store/.open"
   bar display -p -t '=projects:' '#{window_name}' >"$store/.active.tmp" 2>/dev/null &&
     mv "$store/.active.tmp" "$store/.active"
-  rm -f "$store/.open.tmp" "$store/.active.tmp"
+  bar list-windows -t '=projects' -F '#{window_name}	#{@colour}' >"$store/.colours.tmp" 2>/dev/null &&
+    mv "$store/.colours.tmp" "$store/.colours"
+  rm -f "$store/.open.tmp" "$store/.active.tmp" "$store/.colours.tmp"
 }
 
 # With the bar down: takes $1 out of what was open last time.
@@ -328,8 +341,15 @@ close() {
   else
     rm -rf "$store/.tabs/$1" # a console, not a project
   fi
+  # Its worktrees (lib/worktree) close with it, saved the same way.
+  local wt
+  for wt in ${(f)"$(tmux list-sessions -F '#{session_name}	#{@parent}' 2>/dev/null | awk -F'\t' -v p="$1" '$2 == p { print $1 }')"}; do
+    save "$wt"
+    tmux set-option -t "=$wt:" @closing 1
+    tmux kill-session -t "=$wt"
+  done
   # No more saves while it goes: one now would save it half closed.
-  tmux set-option -t "=$1" @closing 1 2>/dev/null
+  tmux set-option -t "=$1:" @closing 1 2>/dev/null
   # The bar's tab first: it starts its project again if it sees it stop.
   [ -z "$2" ] || bar kill-window -t "$2" 2>/dev/null
   tmux kill-session -t "=$1" 2>/dev/null
@@ -481,7 +501,7 @@ case "$cmd" in
     # The bar's tab goes first, or it would start the project again.
     win="$(bar list-windows -t '=projects' -F '#{window_name}	#{window_id}' 2>/dev/null | awk -F'\t' -v n="$1" '$1 == n { print $2 }')"
     [ -z "$win" ] || bar kill-window -t "$win" 2>/dev/null
-    tmux set-option -t "=$1" @closing 1 2>/dev/null
+    tmux set-option -t "=$1:" @closing 1 2>/dev/null
     tmux kill-session -t "=$1" 2>/dev/null
     rm -rf -- "$store/$1" "$store/.tabs/$1"
     if bar has-session -t '=projects' 2>/dev/null; then
@@ -537,8 +557,12 @@ case "$cmd" in
     if [ $# -eq 0 ]; then
       "$lib/tab" new "$(tmux display -p -t "=$name:" '#{session_id}')"
     else
-      # "; true" keeps the tab as a shell when the command ends.
-      tmux new-window -t "=$name:" -n "${1:t}" -c "$(tmux display -p -t "=$name:" '#{session_path}')" "$*; true"
+      # "; true" keeps the tab as a shell when the command ends. An agent gets its flags.
+      run="$*"
+      [ $# -eq 1 ] && [ -n "$launch[$1]" ] && run="$launch[$1]"
+      win_id="$(tmux new-window -P -F '#{window_id}' -t "=$name:" -n "${1:t}" -c "$(tmux display -p -t "=$name:" '#{session_path}')" "$run; true")"
+      # An agent's tab is marked, for agvim send and the list of agents.
+      [ $# -eq 1 ] && [ -n "$launch[$1]" ] && tmux set-option -w -t "$win_id" @agent "$1"
     fi
     show "$name"
     ;;

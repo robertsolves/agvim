@@ -155,6 +155,13 @@ end
 map("n", "<Leader>tn", term "new", with_desc "Terminal: new shell tab")
 map("n", "<Leader>tr", term "rename", with_desc "Terminal: rename tab")
 
+-- Send to the agent tab you used last (any agent): the selection, the change or
+-- line under the cursor, or the errors here. It lands in the prompt, unsent.
+map({ "n", "x" }, "<Leader>a>", term "send_selection", with_desc "Agent: send selection / change / line")
+map("n", "<Leader>ae", term "send_diagnostics", with_desc "Agent: send errors here")
+map("n", "<Leader>tR", term "resume_session", with_desc "Agent: /resume-session")
+map("n", "<Leader>tS", term "skills", with_desc "Agent: add skills and commands")
+
 -- Agents: <leader>t + key opens a new one as a tab.
 for _, agent in ipairs(terminals.agents) do
   map("n", "<Leader>t" .. agent.key, term("new", agent.name, agent.cmd), with_desc("New " .. agent.name))

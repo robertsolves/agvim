@@ -18,9 +18,21 @@
 #   agvim tab [command] [-p name]    a new tab: a shell, or a command such as claude
 #   agvim tabs [-p name]             the tabs of a project
 #   agvim agent <name> [-p name]     a new tab with a coding agent
-#   agvim agents                     the agents it knows, and where to get them
+#   agvim agents [--running]         the agents it knows, and where to get them;
+#                                      --running: every agent tab, to jump to one
+#   agvim send [-t tab] [text]       put text (or what's piped in) in an agent's prompt
 #   agvim name <text>                rename the tab you're in; agents won't change it
 #   agvim shell                      a terminal of its own, outside any project
+#
+# Agents
+#   agvim worktree [name]            a branch in a folder of its own, with its tabs
+#                                      in the row under the projects (alias: branch)
+#   agvim worktree list|close [name] its worktrees; close one (asks if work would go)
+#   agvim merge                      merge the worktree you're in: merge, squash or PR
+#   agvim init [folder] [--agent]    an AGENTS.md (and CLAUDE.md, GEMINI.md) for a project
+#   agvim skills                     add skills and slash commands from a library, for
+#                                      every agent: pick one or several. Also add,
+#                                      remove, list, update, source add|remove|list
 #
 # The workspace
 #   agvim continue                   what was open last time
@@ -414,7 +426,8 @@ case "$cmd" in
     exec "$lib/project" tab "$target" "$args[1]"
     ;;
   agents)
-    grep -v '^#' "$lib/agents.tsv" | while IFS=$'\t' read -r key agent again where; do
+    [ "$1" = --running ] && { shift; exec "$lib/running" "$@"; }
+    grep -v '^#' "$lib/agents.tsv" | while IFS=$'\t' read -r key agent again where flags; do
       if command -v "$agent" >/dev/null; then state=ready; else state=missing; fi
       printf 'Space t%s  %-13s %-8s %s\n' "$key" "$agent" "$state" "$where"
     done
@@ -424,6 +437,17 @@ case "$cmd" in
     target="$(which_session)" || exit 1
     exec "$lib/project" tabs "$target"
     ;;
+  send) exec "$lib/send" "$@" ;;
+  worktree | branch)
+    case "$1" in
+      new | list | merge | close) exec "$lib/worktree" "$@" ;;
+      *) exec "$lib/worktree" new "$@" ;;
+    esac
+    ;;
+  worktrees) exec "$lib/worktree" list "$@" ;;
+  merge) exec "$lib/worktree" merge "$@" ;;
+  init) exec "$lib/init" "$@" ;;
+  skills) exec "$lib/skills" "$@" ;;
   name)
     [ -n "$TMUX_PANE" ] || die "run it in the tab you want to rename"
     new_name="${*//$'\t'/ }"
@@ -543,6 +567,7 @@ case "$cmd" in
       exit 1
     fi
     "$repo/install.sh" "$@" || exit 1
+    "$lib/skills" update >/dev/null 2>&1
     "$lib/project" refresh
     print -r -- "Updated."
     if [ -n "$AGVIM_POPUP" ]; then
@@ -580,7 +605,7 @@ case "$cmd" in
     print -r -- "version $(git -C "$repo" describe --tags --always 2>/dev/null || print unknown)"
     ;;
   help | -h | --help) help ;;
-  _p | _project | _projects | _open-project | _tab | _gd) exec "$lib/${cmd#_}" "$@" ;;
+  _p | _project | _projects | _open-project | _tab | _gd | _attention | _colours | _worktree | _send | _running | _skills | _init) exec "$lib/${cmd#_}" "$@" ;;
   *)
     print -r -- "agvim: no command called $cmd. See agvim help" >&2
     exit 1

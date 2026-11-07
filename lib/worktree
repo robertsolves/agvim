@@ -1,0 +1,438 @@
+#!/bin/zsh
+# worktree: branches you work on side by side, each in a folder of its own (a git
+# worktree), so agents in different branches never touch each other's files. They
+# are the row under the projects bar: main (the project's own folder), then each
+# worktree; clicking one shows its tabs along the bottom.
+#
+#   worktree new [name] [-p project] [--agent name|none]   make one and show it
+#   worktree list [-p project]                             a project's worktrees
+#   worktree merge [-p project]                            merge the one you're in
+#   worktree close [name] [-p project]                     close one (asks if needed)
+#
+# A worktree's tmux session is "<project>-wt-<name>", marked with @parent, and is
+# saved and restored like a project's (lib/project). They're listed, one per line
+# (session, branch, folder, repo, base), in saved-projects/.worktrees/<project>.
+# Their folders are in ~/.local/share/agvim/worktrees/<repo>/<name>, outside the
+# repo, so its own tools never see a second copy.
+#
+# From the bar (tmux/projects.conf): new-here, merge-here, click, render.
+lib="${0:A:h}"
+store="${0:A:h:h}/saved-projects"
+home="${XDG_DATA_HOME:-$HOME/.local/share}/agvim/worktrees"
+unset TMUX
+bar() { command tmux -L projects "$@"; }
+die() {
+  print -r -- "agvim: $1" >&2
+  [ -n "$session" ] && [ -t 0 ] && { print -rn -- "Press Enter to close. "; read -r _; } # in a popup
+  exit 1
+}
+clean() { local n="${1//[^[:alnum:]_-]/_}"; print -r -- "${n#-}"; }
+
+list_file() { print -r -- "$store/.worktrees/$1"; }
+rows() { [ -f "$(list_file "$1")" ] && cat "$(list_file "$1")"; }
+row_of() { rows "$1" | awk -F'\t' -v s="$2" '$1 == s'; }
+field() { print -r -- "$1" | cut -f"$2"; }
+
+# The project a session belongs to: itself, or its @parent.
+project_of() {
+  local p
+  p="$(tmux show-options -qv -t "=$1:" @parent 2>/dev/null)"
+  print -r -- "${p:-$1}"
+}
+
+# The inner tmux client inside the bar's tab for project $1, and the session it shows.
+client_of() { bar display -p -t "=projects:=$1" '#{pane_tty}' 2>/dev/null; }
+shown_in() {
+  local tty
+  tty="$(client_of "$1")" || return 1
+  tmux list-clients -F '#{client_tty}	#{session_name}' | awk -F'\t' -v t="$tty" '$1 == t { print $2 }'
+}
+
+# The git repo of the folder a project's current tab is in.
+repo_here() {
+  local s="$1" dir
+  dir="$(tmux display -p -t "=$s:" '#{pane_current_path}' 2>/dev/null)"
+  [ -n "$dir" ] || dir="$(head -1 "$store/$s" 2>/dev/null)"
+  git -C "$dir" rev-parse --show-toplevel 2>/dev/null
+}
+
+# Shows session $2 in project $1's tab of the bar.
+show() {
+  local tty
+  tty="$(client_of "$1")"
+  [ -n "$tty" ] && tmux switch-client -c "$tty" -t "=$2" 2>/dev/null
+  bar select-window -t "=projects:=$1" 2>/dev/null
+  render "$1"
+}
+
+# The row under the projects bar for project $1 (@wt and @wt-right on its tab).
+render() {
+  local p="$1" win shown out="" n=0 line s branch dir repo base dot
+  win="$(bar list-windows -t '=projects' -F '#{window_id}	#{window_name}' 2>/dev/null | awk -F'\t' -v n="$p" '$2 == n { print $1 }')"
+  [ -n "$win" ] || return 0
+  shown="$(shown_in "$p")"
+  [ -n "$shown" ] || shown="$p"
+  local main_dir main_branch
+  main_dir="$(head -1 "$store/$p" 2>/dev/null)"
+  if [ -z "$main_dir" ] || ! git -C "$main_dir" rev-parse --git-dir >/dev/null 2>&1; then
+    # Not a git repo (or a console): just its name, nothing to branch.
+    bar set-option -w -t "$win" @wt " #[fg=#7f858e]${p//\#/##}"
+    bar set-option -wu -t "$win" @wt-right
+    return 0
+  fi
+  main_branch="$(git -C "$main_dir" symbolic-ref --short -q HEAD || print main)"
+  item() { # range, label, dot, closable, active
+    local style="#[fg=#b4b9c0]" x=""
+    [ "$5" = 1 ] && style="#[bg=#34363b,fg=#e6e8eb,bold]"
+    [ "$4" = 1 ] && x="#[range=user|c${1#w}]#[fg=#5f646c] 󰅖 #[norange]"
+    out+="#[range=user|$1]$style  $3${style}${2//\#/##} #[norange]${x}#[bg=#202226,fg=#b4b9c0,nobold]"
+  }
+  item w0 "$main_branch" "" 0 "$([ "$shown" = "$p" ] && print 1)"
+  local right=""
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    n=$((n + 1))
+    s="$(field "$line" 1)"; branch="$(field "$line" 2)"; dir="$(field "$line" 3)"; base="$(field "$line" 5)"
+    dot=""
+    tmux list-windows -t "=$s" -F '#{@attention}' 2>/dev/null | grep -q . && dot="#[fg=#e5a54b]● "
+    item "w$n" "⎇ $branch" "$dot" 1 "$([ "$shown" = "$s" ] && print 1)"
+    if [ "$shown" = "$s" ]; then
+      right="#[fg=#7f858e]#(~/.local/bin/agvim _worktree stat ${(q)dir} ${(q)base}) #[range=user|wtmerge]#[fg=#2c2e33]#[bg=#2c2e33,fg=#e6e8eb] Merge #[bg=#202226,fg=#2c2e33]#[norange] "
+    fi
+  done < <(rows "$p")
+  out+=" #[range=user|wtnew]#[fg=#2c2e33]#[bg=#2c2e33,fg=#e6e8eb] + Worktree #[bg=#202226,fg=#2c2e33]#[norange]"
+  bar set-option -w -t "$win" @wt "$out"
+  if [ -n "$right" ]; then bar set-option -w -t "$win" @wt-right "$right"; else bar set-option -wu -t "$win" @wt-right; fi
+}
+
+# "from main · 4 files · 2 commits", for the right of the row.
+stat() {
+  local dir="$1" base="$2" files commits fork
+  fork="$(git -C "$dir" merge-base "$base" HEAD 2>/dev/null)" || { print -r -- ""; return; }
+  files="$(git -C "$dir" diff --name-only "$fork" 2>/dev/null | wc -l | tr -d ' ')"
+  files=$((files + $(git -C "$dir" ls-files --others --exclude-standard 2>/dev/null | wc -l)))
+  commits="$(git -C "$dir" rev-list --count "$fork..HEAD" 2>/dev/null)"
+  print -r -- "from $base · $files file$([ "$files" = 1 ] || print s) · $commits commit$([ "$commits" = 1 ] || print s)"
+}
+
+# Copies the untracked files .worktreeinclude names (.env and the like) into a new
+# worktree. Same file and syntax (gitignore's) as Claude Code's.
+copy_included() {
+  local repo="$1" dir="$2" f
+  [ -f "$repo/.worktreeinclude" ] || return 0
+  git -C "$repo" ls-files --others --ignored --exclude-from="$repo/.worktreeinclude" 2>/dev/null | while IFS= read -r f; do
+    mkdir -p "$dir/${f:h}"
+    cp -p "$repo/$f" "$dir/$f"
+  done
+}
+
+new() {
+  local p="$1" name="$2" agent="$3"
+  [ -f "$store/$p" ] || die "worktrees are for saved projects; $p isn't one"
+  local repo
+  repo="$(repo_here "$(shown_in "$p" || print "$p")")"
+  [ -n "$repo" ] || repo="$(git -C "$(head -1 "$store/$p")" rev-parse --show-toplevel 2>/dev/null)"
+  [ -n "$repo" ] || die "$p isn't a git repo"
+  # A worktree's own folder: branch off from what it has, but the repo is the main one.
+  local common main
+  common="$(git -C "$repo" rev-parse --path-format=absolute --git-common-dir)"
+  main="${common:h}"
+  local from
+  from="$(git -C "$repo" symbolic-ref --short -q HEAD || git -C "$repo" rev-parse --short HEAD)"
+  local existing=""
+  if [ -z "$name" ]; then
+    [ -t 0 ] || die "say what to call it: agvim worktree new <name>"
+    # Type a new name, or pick a branch that isn't checked out anywhere yet.
+    local free pick
+    free="$(git -C "$main" for-each-ref --format='%(refname:short)' refs/heads | while IFS= read -r b; do
+      git -C "$main" worktree list --porcelain | grep -qxF "branch refs/heads/$b" || print -r -- "$b"
+    done)"
+    print -r -- "New worktree in $p, from $from. Type a name for a new branch, or pick one:"
+    pick="$(print -r -- "$free" | fzf --print-query --height=~15 --reverse --no-info --prompt="name> ")"
+    [ $? -eq 130 ] && return 3 # Esc: nothing made
+    local query="${pick%%$'\n'*}" chosen="${pick#*$'\n'}"
+    [ "$chosen" = "$pick" ] && chosen=""
+    if [ -n "$chosen" ]; then
+      name="$chosen"; existing=1
+    else
+      name="${query:-wt-$(date +%m%d-%H%M)}"
+    fi
+  fi
+  git -C "$main" check-ref-format --branch "$name" >/dev/null 2>&1 || die "not a branch name git takes: $name"
+  [ -n "$existing" ] || ! git -C "$main" show-ref -q --verify "refs/heads/$name" || existing=1
+  if [ -z "$agent" ]; then
+    if [ -t 0 ]; then
+      local installed
+      installed="$(grep -v '^#' "$lib/agents.tsv" | cut -f2 | while read -r a; do command -v "$a" >/dev/null && print -r -- "$a"; done)"
+      agent="$(print -r -- "none${installed:+$'\n'$installed}" | fzf --height=~15 --reverse --no-info --prompt="agent to start> ")" || agent=none
+    else
+      agent=none
+    fi
+  fi
+  local key s dir
+  key="$(clean "$name")"
+  s="$p-wt-$key"
+  dir="$home/$(clean "${main:t}")/$key"
+  tmux has-session -t "=$s" 2>/dev/null && { show "$p" "$s"; return; }
+  mkdir -p "${dir:h}"
+  if [ -n "$existing" ]; then
+    git -C "$main" worktree add -q "$dir" "$name" || die "git couldn't make the worktree"
+  else
+    git -C "$main" worktree add -q -b "$name" "$dir" "$from" || die "git couldn't make the worktree"
+  fi
+  copy_included "$main" "$dir"
+  mkdir -p "$store/.worktrees"
+  print -r -- "$s	$name	$dir	$main	$from" >>"$(list_file "$p")"
+  start_session "$p" "$s"
+  if [ "$agent" != none ] && [ -n "$agent" ]; then
+    AW_NO_OPEN=1 "$lib/project" tab "$s" "$agent" >/dev/null 2>&1
+  fi
+  show "$p" "$s"
+}
+
+# Starts worktree session $2 of project $1: from its save, or fresh.
+start_session() {
+  local p="$1" s="$2" row dir base
+  row="$(row_of "$p" "$s")"
+  [ -n "$row" ] || return 1
+  dir="$(field "$row" 3)"; base="$(field "$row" 5)"
+  [ -d "$dir" ] || return 1
+  tmux has-session -t "=$s" 2>/dev/null && return 0
+  "$lib/project" start "$s" || return 1
+  tmux set-option -t "=$s:" @parent "$p"
+  # Neovim's Alt-g there shows everything since it branched off (plugins/editor.lua).
+  tmux set-environment -t "=$s:" AGVIM_BASE "$base"
+}
+
+# The worktree session that project $1 shows, or stop.
+current_wt() {
+  local s
+  s="$(shown_in "$1")"
+  [ -n "$s" ] && [ -n "$(row_of "$1" "$s")" ] || return 1
+  print -r -- "$s"
+}
+
+merged() { # main repo, branch, base
+  git -C "$1" merge-base --is-ancestor "$2" "$3" 2>/dev/null
+}
+
+close() {
+  local p="$1" s="$2" force="$3"
+  local row branch dir main base
+  row="$(row_of "$p" "$s")"
+  [ -n "$row" ] || die "no worktree $s in $p"
+  branch="$(field "$row" 2)"; dir="$(field "$row" 3)"; main="$(field "$row" 4)"; base="$(field "$row" 5)"
+  local dirty="" keep=""
+  [ -n "$(git -C "$dir" status --porcelain 2>/dev/null)" ] && dirty=1
+  if [ -n "$dirty" ] && [[ "$force" != yes* ]]; then
+    [ -t 0 ] || return 2
+    print -r -- "$branch has changes that aren't committed:"
+    git -C "$dir" status --short | head -20
+    print -rn -- "Throw them away and close it? (y/N) "
+    read -r answer
+    [[ "$answer" == [yY]* ]] || return 0
+  fi
+  # yes-merged: squashed into base, which git can't tell.
+  if [ "$force" != yes-merged ] && ! merged "$main" "$branch" "$base"; then
+    if [ "$force" = yes ]; then
+      keep=1
+    else
+      [ -t 0 ] || return 2
+      local choice
+      choice="$(print -l "Keep the branch $branch (just close the folder)" "Delete the branch $branch too" "Cancel" |
+        fzf --height=~6 --reverse --no-info --header="$branch isn't merged into $base." --prompt="> ")" || return 0
+      case "$choice" in
+        Keep*) keep=1 ;;
+        Delete*) keep="" ;;
+        *) return 0 ;;
+      esac
+    fi
+  fi
+  # Back to main first if it's what's shown, then stop it and take it away.
+  [ "$(shown_in "$p")" = "$s" ] && show "$p" "$p"
+  tmux set-option -t "=$s:" @closing 1 2>/dev/null
+  tmux kill-session -t "=$s" 2>/dev/null
+  rm -rf -- "$store/.tabs/$s"
+  git -C "$main" worktree remove --force "$dir" 2>/dev/null || { rm -rf -- "$dir"; git -C "$main" worktree prune; }
+  if [ -z "$keep" ]; then
+    git -C "$main" branch -D "$branch" >/dev/null 2>&1
+  fi
+  awk -F'\t' -v s="$s" '$1 != s' "$(list_file "$p")" >"$(list_file "$p").tmp"
+  mv "$(list_file "$p").tmp" "$(list_file "$p")"
+  [ -s "$(list_file "$p")" ] || rm -f "$(list_file "$p")"
+  render "$p"
+  print -r -- "Closed $branch${keep:+ (the branch is kept)}."
+}
+
+merge() {
+  local p="$1" s="$2"
+  local row branch dir main base
+  row="$(row_of "$p" "$s")"
+  branch="$(field "$row" 2)"; dir="$(field "$row" 3)"; main="$(field "$row" 4)"; base="$(field "$row" 5)"
+  print -r -- "Merging $branch into $base"
+  print -r -- ""
+  git -C "$dir" --no-pager diff --stat "$(git -C "$dir" merge-base "$base" HEAD)" 2>/dev/null | tail -25
+  git -C "$dir" ls-files --others --exclude-standard | sed 's/^/ (new) /' | head -10
+  print -r -- ""
+  local how
+  how="$(print -l "Merge into $base" "Squash into one commit on $base" \
+    "$(command -v gh >/dev/null && print "Push and open a pull request" || print "Push the branch")" \
+    "See every change side by side first" "Cancel" | fzf --height=~8 --reverse --no-info --prompt="> ")" || return 0
+  case "$how" in
+    See*) (cd "$dir" && "$lib/gd" "$(git merge-base "$base" HEAD)"); merge "$p" "$s"; return ;;
+    Cancel*) return 0 ;;
+  esac
+  # Uncommitted work is committed first, with your message.
+  if [ -n "$(git -C "$dir" status --porcelain)" ]; then
+    local msg
+    print -rn -- "Commit message for what isn't committed yet: "
+    read -r msg
+    [ -n "$msg" ] || { print -r -- "Nothing merged: it needs a message."; return 1; }
+    git -C "$dir" add -A && git -C "$dir" commit -q -m "$msg" || return 1
+  fi
+  case "$how" in
+    Push*)
+      git -C "$dir" push -u origin "$branch" || return 1
+      if command -v gh >/dev/null; then
+        (cd "$dir" && gh pr create --fill --base "$base" --head "$branch") || return 1
+      fi
+      return 0
+      ;;
+  esac
+  # Bring the branch up to date with base where the agent works, so a conflict is
+  # solved there; then base takes it without one.
+  if ! git -C "$dir" merge -q --no-edit "$base"; then
+    print -r -- ""
+    print -r -- "$base and $branch change the same lines. Nothing has been merged into $base."
+    git -C "$dir" diff --name-only --diff-filter=U | sed 's/^/  /'
+    local files
+    files="$(git -C "$dir" diff --name-only --diff-filter=U | tr '\n' ' ')"
+    print -rn -- "Ask the agent in $branch to solve them? (Y/n) "
+    read -r answer
+    if [[ "$answer" != [nN]* ]]; then
+      "$lib/send" -p "$s" "Merging $base into this branch stopped on conflicts in: $files. Resolve them, keep both sides' intent, and commit the merge." 2>&1
+    fi
+    print -r -- "When they're solved, press Merge again."
+    return 1
+  fi
+  local here
+  here="$(git -C "$main" symbolic-ref --short -q HEAD)"
+  if [ "$here" != "$base" ]; then
+    print -r -- "The project's own folder is on ${here:-a detached HEAD}, not $base: switch it to $base first."
+    return 1
+  fi
+  if [[ "$how" == Squash* ]]; then
+    git -C "$main" merge -q --squash "$branch" || return 1
+    git -C "$main" commit -q -m "$branch" || return 1
+  else
+    git -C "$main" merge -q --no-edit --ff "$branch" || return 1
+  fi
+  print -r -- "Merged $branch into $base."
+  print -rn -- "Close the worktree now? (Y/n) "
+  read -r answer
+  # A squash leaves the branch looking unmerged to git; it's in base all the same.
+  [[ "$answer" == [nN]* ]] || close "$p" "$s" yes-merged
+}
+
+# -p, else the project of the shell this runs in.
+here_project() {
+  [ -n "$1" ] && { print -r -- "$1"; return; }
+  [ -n "$TMUX_PANE" ] || die "not in a project: say which with -p <name>"
+  project_of "$(tmux display -p -t "$TMUX_PANE" '#{session_name}')"
+}
+
+cmd="$1"
+[ $# -gt 0 ] && shift
+project="" agent="" session="" args=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -p) project="$2"; shift 2 ;;
+    -P) session="$2"; project="$(project_of "$2")"; shift 2 ;; # a session: its project (popups)
+    --agent) agent="$2"; shift 2 ;;
+    *) args+=("$1"); shift ;;
+  esac
+done
+
+case "$cmd" in
+  new)
+    p="$(here_project "$project")" || exit 1
+    new "$p" "$args[1]" "$agent"; rc=$?
+    [ "$rc" = 3 ] && exit 0
+    [ "$rc" != 0 ] && [ -n "$session" ] && { print -rn -- "Press Enter to close. "; read -r _; }
+    exit "$rc"
+    ;;
+  new-here) # the bar's + Worktree, in a popup
+    new "$args[1]" "" ""; rc=$?
+    [ "$rc" = 0 ] || [ "$rc" = 3 ] || { print -rn -- "Press Enter to close. "; read -r _; }
+    ;;
+  list)
+    p="$(here_project "$project")" || exit 1
+    rows "$p" | while IFS=$'\t' read -r s branch dir main base; do
+      state="closed"; tmux has-session -t "=$s" 2>/dev/null && state="running"
+      print -r -- "$branch  ($state, from $base)  $dir"
+    done
+    ;;
+  merge)
+    p="$(here_project "$project")" || exit 1
+    s="${session:-$(tmux display -p -t "$TMUX_PANE" '#{session_name}' 2>/dev/null)}"
+    if [ -n "$(row_of "$p" "$s")" ] || s="$(current_wt "$p")"; then
+      merge "$p" "$s"
+    else
+      print -r -- "Not in a worktree: make one with Alt-Shift-B, or click one on the row under the projects."
+    fi
+    if [ -n "$session" ]; then print -rn -- "Press Enter to close. "; read -r _; fi
+    ;;
+  merge-here) # the bar's Merge, in a popup
+    s="$(current_wt "$args[1]")" && merge "$args[1]" "$s"
+    print -rn -- "Press Enter to close. "; read -r _
+    ;;
+  close)
+    p="$(here_project "$project")" || exit 1
+    if [ -n "$args[1]" ]; then
+      s="$p-wt-$(clean "$args[1]")"
+    else
+      s="$(tmux display -p -t "$TMUX_PANE" '#{session_name}' 2>/dev/null)"
+      [ -n "$(row_of "$p" "$s")" ] || die "say which: agvim worktree close <name>"
+    fi
+    close "$p" "$s"
+    ;;
+  click) # client, project, range: w<n> shows one (w0 is main), c<n> closes one
+    exec >/dev/null 2>&1
+    client="$args[1]" p="$args[2]" range="$args[3]" n="${args[3]#?}"
+    if [ "$n" = 0 ]; then
+      show "$p" "$p"
+      exit 0
+    fi
+    s="$(rows "$p" | sed -n "${n}p" | cut -f1)"
+    [ -n "$s" ] || exit 0
+    case "$range" in
+      w*)
+        start_session "$p" "$s" && show "$p" "$s"
+        ;;
+      c*)
+        # Merged and clean closes at once; anything to decide opens a popup to ask.
+        row="$(row_of "$p" "$s")"
+        if [ -z "$(git -C "$(field "$row" 3)" status --porcelain 2>/dev/null)" ] && merged "$(field "$row" 4)" "$(field "$row" 2)" "$(field "$row" 5)"; then
+          close "$p" "$s" yes
+        else
+          bar display-popup -c "$client" -E -w 70% -h 50% "env -u TMUX ~/.local/bin/agvim _worktree close-ask ${(q)p} ${(q)s}"
+        fi
+        ;;
+    esac
+    exit 0
+    ;;
+  close-ask)
+    close "$args[1]" "$args[2]"
+    sleep 1
+    ;;
+  render) render "${args[1]:-$(here_project "$project")}" ;;
+  render-all)
+    for f in "$store"/.worktrees/*(N.); do render "${f:t}"; done
+    ;;
+  stat) stat "$args[1]" "$args[2]" ;;
+  start) start_session "$args[1]" "$args[2]" ;;
+  *)
+    sed -n '2,13p' "${0:A}" | sed 's/^# \{0,1\}//'
+    [ -z "$cmd" ] || [ "$cmd" = -h ] || [ "$cmd" = --help ]
+    ;;
+esac

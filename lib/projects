@@ -46,9 +46,19 @@ add() {
   if ! bar has-session -t '=projects' 2>/dev/null; then
     "$repo/lib/project" ensure-self
     bar -f "$conf" new-session -d -s projects -n agvim -x 200 -y 50 "$repo/lib/projects" run agvim
+    keep_colour agvim
     [ "$1" = agvim ] && return
   fi
   bar new-window -d -t '=projects:' -n "$1" "$repo/lib/projects" run "$1"
+  keep_colour "$1"
+}
+
+# The colour a project had last time (lib/project write_open), if it had one.
+keep_colour() {
+  local n
+  [ -f "$store/.colours" ] || return 0
+  n="$(awk -F'\t' -v p="$1" '$1 == p { print $2 }' "$store/.colours")"
+  [ -n "$n" ] && "$repo/lib/colours" keep bar "=projects:=$1" "$n"
 }
 
 # Saves every minute while the bar is up, for a crash or a power cut. Changes to
@@ -79,7 +89,8 @@ case "$1" in
     work has-session 2>/dev/null && work source-file ~/.tmux.conf # pick up changes to it
     bar source-file "$conf" 2>/dev/null
     add agvim
-    for s in ${(f)"$(work list-sessions -F '#{session_name}' 2>/dev/null)"}; do
+    # Worktrees (@parent) are on the row under their project, not tabs of their own.
+    for s in ${(f)"$(work list-sessions -F '#{session_name}	#{@parent}' 2>/dev/null | awk -F'\t' '$2 == "" { print $1 }')"}; do
       add "$s"
     done
     if [ -f "$store/.open" ]; then
@@ -106,6 +117,7 @@ case "$1" in
         sleep 5 # long enough to read why
         exit 1
       fi
+      "$repo/lib/worktree" render "$name" >/dev/null 2>&1
       # Detaching the project's tmux (prefix d) would end this tab and drop the
       # project from the bar while it keeps running, so it attaches again. By id:
       # a renamed project is still the same session.

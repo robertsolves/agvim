@@ -21,6 +21,7 @@ typeset -A expect=(
   site 'title: 51|description: 15[0-9]|canonical = og:url: yes|structured data: valid|every FAQ answer is on the page: yes|sitemap lists the page: yes|files exist: yes|side by side: 0'
   autoupdate 'clean clone moved to: v1.1.0|message: Updated to v1.1.0|new version runs: v1.1.0|your changes kept: 1|off stays on: v1.0.0|offline still opens: yes|already current stays: v1.1.0'
   keep 'bar still up: 1|A still running: 1|same lazygit: 1|tabs once: nvim,lazygit,shell 1,$|late tab saved: 1|bar tab kept: 1|A back: .*late tab|after crash: .*late tab|back to what.s running row: 1|shows off, still in the menu: 1|cursor on: > Keep terminals|setting off: 1|bar up: 0 A up: 0 scratch up: 1|B: nvim,lazygit,shell,shell, panes alive: 4|B after empty name: nvim,lazygit,shell,shell,|^agvim,A,$|^agvim,A2,$'
+  agents 'different tab colours: 3|session: 1 parent=A|folder outside: a/fix-it|row shows it: 1|\+ Worktree button: 1|merge asks: 1|commits in main after merge: 2|closed: 1 folder gone: 1|agent got: hello agent|agent got piped: from a pipe|shown after send: claude|tab dot: done bar dot: 1|after looking: tab=\. bar=\.|mode=0 bar mode=0|running lists claude: 1|cargo test listed: 1|CLAUDE.md kept: x GEMINI.md: @AGENTS.md|Nothing changed|hi  \(mine\)|only that one: 0|after remove: 0'
   up 'brew upgrade neovim|brew upgrade --cask kitty|MasonToolsUpdateSync|install rc=0'
 )
 # Whatever a test left behind: only its own servers, found through its own folder.
@@ -38,7 +39,7 @@ clean_up() {
 
 failed=0
 tests=("$@")
-[ $# -gt 0 ] || tests=(site full app menu name bottom cli close keep ai ai-suggest ai-providers autoupdate up)
+[ $# -gt 0 ] || tests=(site full app menu name bottom cli close keep agents ai ai-suggest ai-providers autoupdate up)
 for t in "${tests[@]}"; do
   [ -f "$here/$t.sh" ] && [ -n "$expect[$t]" ] || { print -r -- "FAIL $t (no such test)"; failed=1; continue; }
   # Bounded, so a test that hangs can't stop the rest. Its servers end with it.
