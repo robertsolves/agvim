@@ -4,7 +4,7 @@ NvChad v2.5 on Neovim 0.12, set up for Flutter/Dart (plus the iOS and Android fo
 
 ## How it's meant to be used
 
-Each project is a tab along the top (`+ Project` opens one, `×` closes it). Inside it, the tabs along the bottom are full screen: Neovim, then a shell, and as many more shells and agents as you like (`+ Shell`, Alt-t for a shell). They're saved with the project and come back when you open it. `Space tc` opens Claude in a new tab (already connected, so it sees your selection and shows edits as diffs: `Space aa` / `Space ad`). `Space tx` Codex, `Space tp` Copilot, `Space tg` Gemini, `Space td` DeepSeek, `Space to` OpenCode, `Space tk` Kilo, `Space tf` Freebuff, `Space tu` Cursor, `Space ta` Aider, `Space tm` Amp, `Space tq` Qwen (`agvim agents` shows which are installed), `Space tn` a plain shell. An agent's tab shows its session's name. Every press starts another one; all keep running in the background. Files an agent changes reload in Neovim within a second; Alt-g shows everything it changed as side-by-side diffs (Alt-g again to go back). Click a tab or press Alt-1 to get back to Neovim.
+Each project is a tab along the top (`+ Project` opens one, its icon closes it). Inside it, the tabs along the bottom are full screen: Neovim, then a shell, and as many more shells and agents as you like (`+ Shell`, Alt-t for a shell). They're saved with the project and come back when you open it. `Space tc` opens Claude in a new tab (already connected, so it sees your selection and shows edits as diffs: `Space aa` / `Space ad`). `Space tx` Codex, `Space tp` Copilot, `Space tg` Gemini, `Space td` DeepSeek, `Space to` OpenCode, `Space tk` Kilo, `Space tf` Freebuff, `Space tu` Cursor, `Space ta` Aider, `Space tm` Amp, `Space tq` Qwen (`agvim agents` shows which are installed), `Space tn` a plain shell. An agent's tab shows its session's name. Every press starts another one; all keep running in the background. Files an agent changes reload in Neovim within a second; Alt-g shows everything it changed as side-by-side diffs (Alt-g again to go back). Click a tab or press Alt-1 to get back to Neovim.
 
 ## Setup
 
@@ -55,7 +55,10 @@ Leader is Space. `Space` then wait shows every key (which-key). `Space ch` opens
 | Tab or Alt-l, Alt-n / Alt-p, Alt-e | accept an AI suggestion, next / previous, dismiss (`agvim ai` chooses the source) |
 | `Space tn`, Alt-t or `+ Shell` | new full-screen shell tab |
 | Alt-. / Alt-, / `Space tl` / `Space tr` | next / previous / pick / rename terminal |
-| click a tab (top: projects, bottom: this project's tabs) | switch to it; `×` on a bottom tab closes that terminal, `×` on a project at the top closes it and all its tabs (both ask), `+ Project` at the top opens a project and `+ Shell` a console; right-click a bottom tab to rename it; with too many to fit, `<` `>` or the wheel on a bar move along it |
+| click a tab (top: projects, middle: worktrees, bottom: this project's tabs) | switch to it; the icon on a bottom tab closes that terminal, on a project at the top closes it and all its tabs (both ask); `+ Project` at the top opens a project and `+ Shell` a console; `+ Worktree` and `Merge` in the middle row; right-click a tab to rename it, change its colour, move or close it; drag or Alt-Shift-Left / Right to move it; with too many to fit, `<` `>` or the wheel on a bar move along it |
+| `Space a>` / `Space ae` | send the selection (or the change or line here) / the errors here to the agent you used last, unsent |
+| `Space tR` / `Space tS` | ask that agent to `/resume-session` / add skills and commands to this project |
+| Alt-Shift-B, tmux prefix a, prefix m | new worktree, every running agent, merge this worktree |
 | `Space tc` `tx` `tp` `tg` `td` `to` `tk` `tf` `tu` `ta` `tm` `tq` | new Claude, Codex, Copilot, Gemini, DeepSeek, OpenCode, Kilo, Freebuff, Cursor, Aider, Amp, Qwen tab |
 | `Space pi` | SVG rendered in a float (first frame), or the image under the cursor |
 | `Space pv` / `Space pc` | live browser preview of SVG (animated SMIL plays), HTML, Markdown / stop |

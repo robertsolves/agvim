@@ -1,0 +1,55 @@
+#!/bin/zsh
+# running: every agent tab in every project and worktree, with what it's doing and
+# how many files are changed where it works. Enter goes to it.
+#
+#   running            the list, to pick from (agvim agents --running, prefix a)
+#   running --print    just the list
+#
+# An agent tab is one started as an agent (@agent), or running anything other than
+# a shell, Neovim or lazygit. Claude says when it's working, waiting or done (its
+# hooks, lib/attention); for the others, a bell means done.
+unset TMUX
+bar() { command tmux -L projects "$@"; }
+tab=$'\t'
+
+rows() {
+  tmux list-windows -a -F "#{session_name}${tab}#{?#{@parent},#{@parent},-}${tab}#{window_id}${tab}#{?#{window_name},#{window_name},-}${tab}#{?#{@agent},#{@agent},-}${tab}#{?#{pane_current_command},#{pane_current_command},-}${tab}#{?#{@agent-state},#{@agent-state},-}${tab}#{?#{@attention},#{@attention},-}${tab}#{pane_current_path}" 2>/dev/null |
+    while IFS=$tab read -r s parent win name agent cmd state attn dir; do
+      # Empty fields are "-": read would run two tabs together.
+      [ "$parent" = - ] && parent=""
+      [ "$agent" = - ] && agent=""
+      [ "$state" = - ] && state=""
+      [ "$attn" = - ] && attn=""
+      [ -n "$agent" ] || [[ "$cmd" != (-|)(zsh|bash|fish|sh|nvim|lazygit) ]] || continue
+      # Back at its shell: it ended.
+      [[ "$cmd" == (-|)(zsh|bash|fish|sh) ]] && state=ended
+      [ -n "$state" ] || state=running
+      [ -n "$attn" ] && state="$attn"
+      local where="$s"
+      [ -n "$parent" ] && where="$parent ⎇ ${s#$parent-wt-}"
+      local files
+      files="$(git -C "$dir" status --porcelain 2>/dev/null | wc -l | tr -d ' ')"
+      printf '%s\t%s\t%-28s %-14s %-9s %s files\n' "$s" "$win" "$where" "${agent:-$cmd}" "$state" "$files"
+    done
+}
+
+list="$(rows)"
+if [ "$1" = --print ]; then
+  [ -n "$list" ] && print -r -- "$list" | cut -f3- || print -r -- "No agents running."
+  exit 0
+fi
+[ -n "$list" ] || { print -r -- "No agents running. Space t + a key starts one (agvim agents lists them)."; sleep 2; exit 0; }
+pick="$(print -r -- "$list" | fzf --delimiter="$tab" --with-nth=3 --height=100% --reverse --no-info \
+  --header="project                      agent          state     changed" --prompt="go to> ")" || exit 0
+s="${pick%%$tab*}"
+rest="${pick#*$tab}"
+win="${rest%%$tab*}"
+# Its project's tab in the bar, the worktree in that, then the tab.
+parent="$(tmux show-options -qv -t "=$s:" @parent)"
+p="${parent:-$s}"
+bar select-window -t "=projects:=$p" 2>/dev/null
+tty="$(bar display -p -t "=projects:=$p" '#{pane_tty}' 2>/dev/null)"
+[ -n "$tty" ] && tmux switch-client -c "$tty" -t "=$s" 2>/dev/null
+tmux select-window -t "$win"
+"${0:A:h}/worktree" render "$p" >/dev/null 2>&1
+exit 0

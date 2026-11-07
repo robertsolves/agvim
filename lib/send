@@ -1,0 +1,83 @@
+#!/bin/zsh
+# send: puts text into an agent's prompt, unsent, and shows its tab, so you can add
+# a word and press Enter. Works for every agent: it's pasted into the terminal.
+#
+#   send [-t agent or tab] [-p project] [text...]
+#
+# No text: what's piped in (cmd 2>&1 | agvim send). It goes to the agent tab you
+# used last in this project; with none, it asks which agent to start, and waits
+# for it. Neovim's Space a> and Space ae use it (configs/terminals.lua).
+lib="${0:A:h}"
+die() { print -r -- "agvim: $1" >&2; exit 1; }
+
+target="" session=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -t) target="$2"; shift 2 ;;
+    -p) session="$2"; shift 2 ;;
+    --) shift; break ;;
+    *) break ;;
+  esac
+done
+if [ $# -gt 0 ]; then
+  text="$*"
+elif [ ! -t 0 ]; then
+  text="$(cat)"
+else
+  die "nothing to send: agvim send <text>, or pipe something in"
+fi
+[ -n "$text" ] || die "nothing to send"
+
+if [ -z "$session" ]; then
+  [ -n "$TMUX_PANE" ] || die "run it in a project, or say which with -p <name>"
+  session="$(tmux display -p -t "$TMUX_PANE" '#{session_id}')"
+else
+  session="$(tmux display -p -t "=$session:" '#{session_id}')" || die "no running project called $session"
+fi
+
+# Agent tabs: started as one (@agent), or running something other than a shell,
+# Neovim or lazygit.
+agents() {
+  tmux list-windows -t "$session" -F '#{window_id}	#{@agent}	#{window_name}	#{pane_current_command}' |
+    awk -F'\t' '$2 != "" || $4 !~ /^-?(zsh|bash|fish|sh|nvim|lazygit)$/ { print }'
+}
+
+win=""
+if [ -n "$target" ]; then
+  win="$(agents | awk -F'\t' -v t="$target" '$2 == t || $3 == t { print $1; exit }')"
+  [ -n "$win" ] || win="$(tmux list-windows -t "$session" -F '#{window_id}	#{window_name}' | awk -F'\t' -v t="$target" '$2 == t { print $1; exit }')"
+fi
+if [ -z "$win" ] && [ -z "$target" ]; then
+  last="$(tmux show-options -qv -t "$session" @last-agent)"
+  [ -n "$last" ] && agents | cut -f1 | grep -qxF -- "$last" && win="$last"
+  [ -n "$win" ] || win="$(agents | head -1 | cut -f1)"
+fi
+if [ -z "$win" ]; then
+  # Nothing to send to: start one. -t names it; otherwise ask, when someone can answer.
+  agent="$target"
+  if [ -z "$agent" ]; then
+    installed=(${(f)"$(grep -v '^#' "$lib/agents.tsv" | cut -f2 | while read -r a; do command -v "$a" >/dev/null && print -r -- "$a"; done)"})
+    [ "${#installed}" -gt 0 ] || die "no agent is running here, and none is installed. See agvim agents"
+    if [ -t 1 ] && [ -e /dev/tty ]; then
+      agent="$(print -rl -- "${installed[@]}" | fzf --height=~12 --reverse --no-info --prompt="start which agent> " </dev/tty)" || exit 0
+    else
+      agent="$installed[1]"
+    fi
+  fi
+  grep -v '^#' "$lib/agents.tsv" | cut -f2 | grep -qxF -- "$agent" || die "no agent called $agent. See agvim agents"
+  AW_NO_OPEN=1 "$lib/project" tab "$(tmux display -p -t "$session" '#{session_name}')" "$agent" >/dev/null 2>&1
+  win="$(tmux list-windows -t "$session" -F '#{window_id}	#{@agent}' | awk -F'\t' -v a="$agent" '$2 == a { w = $1 } END { print w }')"
+  [ -n "$win" ] || die "couldn't start $agent"
+  # Until it's running and has drawn its prompt.
+  for i in {1..40}; do
+    [[ "$(tmux display -p -t "$win" '#{pane_current_command}')" == (-|)(zsh|bash|fish|sh) ]] || break
+    sleep 0.25
+  done
+  sleep 2
+fi
+
+# Bracketed paste: several lines arrive as one paste, not as Enter after each.
+print -rn -- "$text" | tmux load-buffer -b agvim-send - || die "couldn't send"
+tmux paste-buffer -p -d -b agvim-send -t "$win"
+tmux set-option -t "$session" @last-agent "$win"
+tmux select-window -t "$win"

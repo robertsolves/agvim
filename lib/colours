@@ -1,0 +1,94 @@
+#!/bin/zsh
+# colours: each tab's name is in one of the theme's 16 terminal colours. New tabs
+# take the next one in a sequence; right-click a tab, Colour, to pick another.
+#
+#   colours next <server> <window>          give a new tab the next colour
+#   colours set <server> <window> <0-15>    give it this one
+#   colours keep <server> <window> <0-15>   the same, for one coming back (no save)
+#   colours menu <server> <client> <window> the right-click Colour menu
+#   colours theme <16 colours>              the theme's colours (from Neovim, as it
+#                                           loads a theme): every tab follows
+#
+# <server> is work (a project's tabs along the bottom) or bar (the projects along
+# the top). The colours live in tmux options @c0 to @c15 on both servers; a tab keeps
+# its number in @colour and the colour itself in @fg, which the tab line shows.
+# Used as `agvim _colours` from both tmux configs and Neovim. Prints nothing.
+exec >/dev/null 2>&1
+unset TMUX
+srv() { if [ "$1" = bar ]; then command tmux -L projects "${@:2}"; else command tmux "${@:2}"; fi; }
+
+# Colours that stand out on the dark bars first; black, white and greys last.
+order=(4 2 5 3 6 1 12 10 13 11 14 9 7 15 8 0)
+names=(black red green yellow blue magenta cyan white "bright black" "bright red" "bright green" "bright yellow" "bright blue" "bright magenta" "bright cyan" "bright white")
+
+apply() { # server, window, number
+  local hex
+  hex="$(srv "$1" show-options -gqv "@c$3")"
+  srv "$1" set-option -w -t "$2" @colour "$3"
+  srv "$1" set-option -w -t "$2" @fg "${hex:-default}"
+}
+
+case "$1" in
+  next)
+    # New tabs come in bunches (a project starting), each its own hook: one at a time,
+    # or two would take the same colour.
+    lock="${TMUX_TMPDIR:-/tmp}/agvim-colour-$UID.lock"
+    for _ in {1..40}; do mkdir "$lock" 2>/dev/null && break; sleep .05; done
+    trap 'rmdir "$lock" 2>/dev/null' EXIT
+    # Already has one (restored): keep it.
+    [ -n "$(srv "$2" show-options -wqv -t "$3" @colour)" ] && exit 0
+    # The first in the sequence that no other tab here has; when all are taken,
+    # round again by how many tabs there are.
+    used=(${(f)"$(srv "$2" list-windows -t "$3" -F '#{@colour}')"})
+    pick=""
+    for n in "${order[@]:0:12}"; do
+      (( ${used[(Ie)$n]} )) || { pick="$n"; break; }
+    done
+    [ -n "$pick" ] || pick="${order[$(( (${#used} - 1) % 12 + 1 ))]}"
+    apply "$2" "$3" "$pick"
+    ;;
+  keep)
+    [[ "$4" == <0-15> ]] && apply "$2" "$3" "$4"
+    ;;
+  set)
+    [[ "$4" == <0-15> ]] || exit 0
+    apply "$2" "$3" "$4"
+    # Saved with the tab (lib/project save), or with the bar's list for a project.
+    if [ "$2" = work ]; then
+      ~/.local/bin/agvim _project save-soon "$(srv work display -p -t "$3" '#{session_name}')"
+    else
+      ~/.local/bin/agvim _project save-all
+    fi
+    ;;
+  menu)
+    items=()
+    for n in {0..15}; do
+      hex="$(srv "$2" show-options -gqv "@c$n")"
+      key="${${(@):-0 1 2 3 4 5 6 7 8 9 a b c d e f}[$((n + 1))]}"
+      items+=("#[fg=${hex:-default}]●#[default] ${names[$((n + 1))]}" "$key" "run-shell -b '~/.local/bin/agvim _colours set $2 $4 $n'")
+    done
+    srv "$2" display-menu -O -c "$3" -T "#[align=centre]Colour" -x M -y M "${items[@]}"
+    ;;
+  theme)
+    shift
+    [ $# -eq 16 ] || exit 0
+    changed=0
+    for server in work bar; do
+      for n in {0..15}; do
+        hex="${@[$((n + 1))]}"
+        [[ "$hex" == \#[0-9a-fA-F](#c6) ]] || continue
+        [ "$(srv $server show-options -gqv "@c$n")" = "$hex" ] && continue
+        srv $server set-option -g "@c$n" "$hex"
+        changed=1
+      done
+    done
+    [ "$changed" = 1 ] || exit 0
+    # Every tab follows the new colours.
+    for server in work bar; do
+      srv $server list-windows -a -F '#{window_id}	#{@colour}' | while IFS=$'\t' read -r win n; do
+        [ -n "$n" ] && apply $server "$win" "$n"
+      done
+    done
+    ;;
+esac
+exit 0

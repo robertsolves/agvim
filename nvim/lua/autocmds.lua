@@ -51,3 +51,10 @@ autocmd({ "BufEnter", "WinEnter" }, {
     vim.cmd "startinsert"
   end,
 })
+
+-- Open files, splits and cursors come back when the project reopens.
+require "configs.session"
+-- :AgvimRefresh, which agvim refresh sends to each running Neovim.
+require "configs.refresh"
+-- The tabs' colours follow the theme.
+require "configs.tab_colours"
