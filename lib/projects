@@ -132,7 +132,10 @@ case "$1" in
       bar has-session -t '=projects' 2>/dev/null || exit 0
     fi
     "$repo/lib/project" save-all
-    work kill-server 2>/dev/null
+    # Only the projects the bar showed: a tmux session of yours that isn't one lives on.
+    for s in ${(f)"$(bar list-windows -t '=projects' -F '#{window_name}' 2>/dev/null)"}; do
+      work kill-session -t "=$s" 2>/dev/null
+    done
     bar kill-server 2>/dev/null
     exit 0
     ;;

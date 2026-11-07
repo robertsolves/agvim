@@ -83,7 +83,11 @@ case "$1" in
     exit 0
     ;;
   --forget)
-    [[ "$2" == open:* ]] && "$project" delete "${2#open:}"
+    if [[ "$2" == open:* ]]; then
+      print -rn -- "Forget ${2#open:}? It stops, its folders stay. (y/N) " >/dev/tty
+      read -r answer </dev/tty
+      [[ "$answer" == [yY]* ]] && "$project" delete "${2#open:}"
+    fi
     exit 0
     ;;
 esac
@@ -99,7 +103,7 @@ pick="$(
   rows | fzf --delimiter="$tab" --with-nth=2 --query="$*" --height=60% --reverse \
     --prompt="project> " --header="Ctrl-X forgets a saved project" \
     --preview="${(q)self} --preview {1}" \
-    --bind="ctrl-x:execute-silent(${(q)self} --forget {1})+reload(${(q)self} --rows)"
+    --bind="ctrl-x:execute(${(q)self} --forget {1})+reload(${(q)self} --rows)"
 )"
 key="${pick%%$tab*}"
 
@@ -109,7 +113,7 @@ case "$key" in
     folder="$(browse)" || exit 3
     print -rn -- "Project name [${folder:t}]: "
     read -r name
-    exec "$project" new "$folder" "${name:-${folder:t}}"
+    exec "$project" new "$folder" ${name:+"$name"}
     ;;
   add)
     folder="$(browse)" || exit 3

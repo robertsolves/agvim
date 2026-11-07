@@ -47,10 +47,11 @@ die() {
   exit 1
 }
 
-# Absolute folder; a file stands for the folder it's in.
+# Absolute folder; a file stands for the folder it's in. A path that's gone stays as
+# it is, so a moved folder can still be taken out of a project.
 folder_of() {
   local dir="${1:A}"
-  [ -d "$dir" ] || dir="${dir:h}"
+  [ ! -e "$dir" ] || [ -d "$dir" ] || dir="${dir:h}"
   print -r -- "$dir"
 }
 
@@ -129,11 +130,12 @@ program_on() {
 # can read what's saved.
 save() {
   local rows
-  rows="$(tmux list-panes -s -t "=$1" -F '#{window_index}	#{window_name}	#{window_active}	#{window_layout}	#{?#{@folder},#{@folder},-}	#{pane_index}	#{pane_current_path}	#{pane_tty}	#{pane_id}	#{?#{@named},1,-}	#{?#{@folder_tab},1,-}' 2>/dev/null)"
+  rows="$(tmux list-panes -s -t "=$1" -F '#{window_index}	#{?#{==:#{window_name},},-,#{window_name}}	#{window_active}	#{window_layout}	#{?#{@folder},#{@folder},-}	#{pane_index}	#{pane_current_path}	#{pane_tty}	#{pane_id}	#{?#{@named},1,-}	#{?#{@folder_tab},1,-}' 2>/dev/null)"
   [ -n "$rows" ] || return 0
   umask 077
   local dir="$store/.tabs/$1"
   mkdir -p "$dir"
+  rm -f "$dir"/*.txt(N) # the output of tabs that have gone is not kept
   local idx win act layout folder pane where tty id named ftab prog
   print -r -- "$rows" | while IFS=$'\t' read -r idx win act layout folder pane where tty id named ftab; do
     prog="$(program_on "$tty")" || {
@@ -147,7 +149,7 @@ save() {
 }
 
 # Rebuilds exactly the tabs project $1 had, so one you closed stays closed; $2 is its
-# first folder.
+# first folder, where a tab goes whose own folder is gone.
 restore() {
   local name="$1"
   shift
@@ -160,7 +162,7 @@ restore() {
     # Quit before it was saved, it's still the lazygit tab.
     [ "$win" = lazygit ] && [ "$pane" = 1 ] && prog=lazygit
     cmd=()
-    if [ "$prog" != - ]; then
+    if [ "$prog" != - ] && [ -n "$resume[$prog]" ]; then
       # "; true" keeps a shell above it, like every tab that runs a program.
       cmd=("$resume[$prog]; true")
     elif [ -s "$dir/$idx.$pane.txt" ]; then
@@ -170,7 +172,7 @@ restore() {
       if tmux has-session -t "=$name" 2>/dev/null; then
         win_id="$(tmux new-window -d -P -F '#{window_id}' -t "=$name:" -n "$win" -c "$where" "${cmd[@]}")"
       else
-        win_id="$(tmux new-session -d -P -F '#{window_id}' -s "$name" -n "$win" -x 200 -y 50 -c "$first" "${cmd[@]}")"
+        win_id="$(tmux new-session -d -P -F '#{window_id}' -s "$name" -n "$win" -x 200 -y 50 -c "$where" "${cmd[@]}")"
       fi
       [ "$folder" = - ] || tmux set-option -w -t "$win_id" @folder "$folder"
       [ "$named" != 1 ] || tmux set-option -w -t "$win_id" @named 1
@@ -234,6 +236,7 @@ refresh() {
   bar source-file "$conf" 2>/dev/null
   local state="${XDG_STATE_HOME:-$HOME/.local/state}/nvim"
   mkdir -p "$state"
+  find "$state" -name 'agvim-refresh-*.vim' -mtime +1 -delete 2>/dev/null # earlier refreshes
   local tty id file count=0
   tmux list-panes -a -F '#{pane_tty}	#{pane_id}' 2>/dev/null | while IFS=$'\t' read -r tty id; do
     [ "$(program_on "$tty")" = nvim ] || continue
@@ -272,13 +275,14 @@ close() {
   fi
   tmux kill-session -t "=$1" 2>/dev/null
   [ -z "$2" ] || bar kill-window -t "$2" 2>/dev/null
-  write_open
+  # With the bar gone it would write an empty list over what was open.
+  bar has-session -t '=projects' 2>/dev/null && write_open
 }
 
 # A console of its own, "Shell N" with the lowest free N, in your home folder.
 new_shell() {
   local n=1
-  while tmux has-session -t "=Shell $n" 2>/dev/null || bar list-windows -t '=projects' -F '#{window_name}' 2>/dev/null | grep -qx "Shell $n"; do
+  while [ -e "$store/Shell $n" ] || tmux has-session -t "=Shell $n" 2>/dev/null || bar list-windows -t '=projects' -F '#{window_name}' 2>/dev/null | grep -qx "Shell $n"; do
     n=$((n + 1))
   done
   tmux new-session -d -s "Shell $n" -n "shell 1" -c "$HOME"
@@ -349,18 +353,20 @@ ask() {
 
 finder_new() {
   local name dir
-  name="$(ask 'return text returned of (display dialog "New project name:" default answer (item 1 of argv) with title "New AgVim Project")' "${1:A:t}")" || return 0
+  name="$(ask 'return text returned of (display dialog "New project name:" default answer (item 1 of argv) with title "New AgVim Project")' "${$(folder_of "$1"):t}")" || return 0
   name="$(clean "$name")"
   if [ -z "$name" ] || { [ -f "$store/$name" ] && ! grep -qxF -- "$(folder_of "$1")" "$store/$name"; }; then
     ask 'display alert "Could not create that project" message (item 1 of argv)' "A project called \"$name\" exists already, or the name is empty. Use Add to AgVim Project, or pick another name." >/dev/null
     return 0
   fi
   window=(--window)
-  new "$1" "$name"
+  # One window for all of them, once they are in.
+  AW_NO_OPEN=1 new "$1" "$name"
   shift
   for dir in "$@"; do
-    add "$name" "$dir"
+    AW_NO_OPEN=1 add "$name" "$dir"
   done
+  show "$name"
 }
 
 finder_add() {
@@ -374,8 +380,9 @@ finder_add() {
   return item 1 of chosen' "${names[@]}")" || return 0
   window=(--window)
   for dir in "$@"; do
-    add "$name" "$dir"
+    AW_NO_OPEN=1 add "$name" "$dir"
   done
+  show "$name"
 }
 
 window=()
@@ -457,7 +464,16 @@ case "$cmd" in
     [ ! -d "$store/.tabs/$1" ] || mv "$store/.tabs/$1" "$store/.tabs/$new_name"
     tmux rename-session -t "=$1" "$new_name" 2>/dev/null
     bar rename-window -t "=projects:=$1" "$new_name" 2>/dev/null
-    bar has-session -t '=projects' 2>/dev/null && write_open
+    if bar has-session -t '=projects' 2>/dev/null; then
+      write_open
+    else
+      # Closed: what was open last time gets the new name too.
+      for f in .open .active; do
+        [ -f "$store/$f" ] || continue
+        sed "s/^$1\$/$new_name/" "$store/$f" >"$store/.tmp"
+        mv "$store/.tmp" "$store/$f"
+      done
+    fi
     print -r -- "$1 is now $new_name"
     ;;
   tab)

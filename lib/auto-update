@@ -15,9 +15,10 @@ perl -e 'alarm 6; exec @ARGV' git -C "$repo" fetch -q origin --tags 2>/dev/null 
 latest="$(g tag -l 'v*.*.*' --sort=-v:refname | head -1)"
 [ -n "$latest" ] || exit 1
 g merge-base --is-ancestor "$latest" HEAD && exit 1 # has it already
-# Neovim rewrites its plugin lockfile as it runs; the repo's copy decides the versions.
+# Neovim rewrites its plugin lockfile as it runs; the repo's copy decides the versions,
+# but only once we know we're updating.
+[ -z "$(g status --porcelain -- . ':!nvim/lazy-lock.json')" ] || exit 1
 g checkout -- nvim/lazy-lock.json 2>/dev/null
-[ -z "$(g status --porcelain)" ] || exit 1
 print -r -- "Updating AgVim to $latest..."
 g merge -q --ff-only "$latest" 2>/dev/null || { print -r -- "Couldn't update, so opening this version."; exit 1; }
 if ! AGVIM_NO_LAUNCH=1 "$repo/install.sh" --no-brew --no-tools >/dev/null 2>&1; then

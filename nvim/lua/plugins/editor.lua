@@ -12,7 +12,7 @@ local function nvim_tree_on_attach(bufnr)
   vim.keymap.set("n", "\\", api.tree.change_root_to_parent, opts "Up")
   vim.keymap.set("n", "<C-CR>", function()
     local node = api.tree.get_node_under_cursor()
-    if node.nodes then
+    if node and node.nodes then
       api.tree.change_root_to_node(node)
     end
   end, opts "Down")
@@ -117,7 +117,7 @@ return {
     opts = {},
   },
 
-  { "tpope/vim-fugitive", cmd = { "Git", "G", "Gdiffsplit", "Gblame" } },
+  { "tpope/vim-fugitive", cmd = { "Git", "G", "Gdiffsplit" } },
 
   -- VS Code's Source Control view: every changed file in a list, side-by-side
   -- diffs, stage/unstage with `-`, and file history. Good for reviewing what an

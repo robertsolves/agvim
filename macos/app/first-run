@@ -32,10 +32,14 @@ if [ ! -d "$dir/.git" ]; then
   git -C "$dir" init -q -b main
   git -C "$dir" remote add origin "$url"
   if git -C "$dir" fetch -q origin main --tags 2>/dev/null; then
-    git -C "$dir" reset -q --hard origin/main
+    # The newest release, like auto-update; main only while there are none.
+    latest="$(git -C "$dir" tag -l 'v*.*.*' --sort=-v:refname | head -1)"
+    git -C "$dir" reset -q --hard "${latest:-origin/main}"
     git -C "$dir" branch -q -u origin/main 2>/dev/null
   else
-    print -r -- "Couldn't reach GitHub: using the version in this app. agvim update won't work until it can."
+    # No half-made clone left behind: the next launch tries again.
+    rm -rf "$dir/.git"
+    print -r -- "Couldn't reach GitHub: using the version in this app. It tries again next time AgVim opens."
   fi
 fi
 

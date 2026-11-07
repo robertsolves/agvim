@@ -54,7 +54,7 @@ Leader is Space. `Space` then wait shows every key (which-key). `Space ch` opens
 | `]h` `[h`, `Space gs` / `Space gu` / `Space gw` | next/previous change, stage / undo change / word diff |
 | Tab or Alt-l, Alt-n / Alt-p, Alt-e | accept an AI suggestion, next / previous, dismiss (`agvim ai` chooses the source) |
 | `Space tn`, Alt-t or `+ Shell` | new full-screen shell tab |
-| Alt-. / Alt-, / `Space tl` / `Space tr` | next / previous / pick / rename terminal |
+| Alt-. / Alt-, / `Space tr` | next / previous / rename terminal |
 | click a tab (top: projects, bottom: this project's tabs) | switch to it; `×` on a bottom tab closes that terminal, `×` on a project at the top closes it and all its tabs (both ask), `+ Project` at the top opens a project and `+ Shell` a console; right-click a bottom tab to rename it; with too many to fit, `<` `>` or the wheel on a bar move along it |
 | `Space tc` `tx` `tp` `tg` `td` `to` `tk` `tf` `tu` `ta` `tm` `tq` | new Claude, Codex, Copilot, Gemini, DeepSeek, OpenCode, Kilo, Freebuff, Cursor, Aider, Amp, Qwen tab |
 | `Space pi` | SVG rendered in a float (first frame), or the image under the cursor |

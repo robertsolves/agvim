@@ -98,12 +98,15 @@ if [ "$BREW" = 1 ]; then
   brew upgrade $(sed -nE 's/^brew "([^"]+)".*/\1/p' "$REPO/Brewfile") || warn "couldn't update every Homebrew package. See above."
   # Cask only when missing: a font installed another way makes brew fail.
   ls ~/Library/Fonts/JetBrainsMonoNerdFont* /Library/Fonts/JetBrainsMonoNerdFont* >/dev/null 2>&1 ||
-    brew install --cask font-jetbrains-mono-nerd-font
+    brew install --cask font-jetbrains-mono-nerd-font || warn "couldn't install the font. See above."
   # AgVim's windows open in kitty (lib/terminal, macos/kitty.conf).
   if [ ! -d /Applications/kitty.app ] && [ ! -d "$HOME/Applications/kitty.app" ]; then
-    brew install --cask kitty
-    mkdir -p "$HOME/.config/agvim"
-    touch "$HOME/.config/agvim/installed-kitty"
+    if brew install --cask kitty; then
+      mkdir -p "$HOME/.config/agvim"
+      touch "$HOME/.config/agvim/installed-kitty"
+    else
+      warn "couldn't install kitty. See above."
+    fi
   fi
   # Only Homebrew's own copies: one installed another way updates itself.
   for cask in kitty font-jetbrains-mono-nerd-font; do
@@ -175,16 +178,12 @@ fi
 for script in "$REPO"/bin/*; do
   link "$script" "$HOME/.local/bin/$(basename "$script")"
 done
-case ":$PATH:" in
-  *":$HOME/.local/bin:"*) ;;
-  *)
-    # So `agvim` works in a new terminal. uninstall.sh removes the line.
-    if ! grep -qs '# agvim$' "$HOME/.zshrc"; then
-      printf 'export PATH="$HOME/.local/bin:$PATH" # agvim\n' >>"$HOME/.zshrc"
-      note "added ~/.local/bin to your PATH in ~/.zshrc"
-    fi
-    ;;
-esac
+# So `agvim` works in a new terminal, whatever PATH this one has. uninstall.sh removes
+# the line. Appended: your own folders stay first.
+if ! grep -qs -e '# agvim$' -e 'local/bin' "$HOME/.zshrc"; then
+  printf 'export PATH="$PATH:$HOME/.local/bin" # agvim\n' >>"$HOME/.zshrc"
+  note "added ~/.local/bin to your PATH in ~/.zshrc"
+fi
 
 step "Finder: New AgVim Project and Add to AgVim Project when you right-click a folder"
 rm -rf "$HOME/Library/Services/Open in Neovim.workflow" "$HOME/Library/Services/New Project.workflow" "$HOME/Library/Services/Add to Project.workflow" # earlier versions
