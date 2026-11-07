@@ -270,6 +270,20 @@ start() {
   done
 }
 
+# Tabs that were open before the colour, dot and worktree hooks existed get what
+# those give a new one: a colour, and the worktree row under the bar.
+tabs_catch_up() {
+  local win name
+  bar list-windows -t '=projects' -F '#{window_id}	#{window_name}' 2>/dev/null | while IFS=$'\t' read -r win name; do
+    "$lib/colours" next bar "$win"
+    "$lib/worktree" render "$name"
+  done
+  tmux list-windows -a -F '#{window_id}' 2>/dev/null | while read -r win; do
+    "$lib/colours" next work "$win"
+  done
+  "$lib/attention" sync
+}
+
 # Loads changes to the setup without stopping anything: both tmux configs, Neovim's
 # colours, and each running Neovim restarts with the same files and splits. Shells
 # and agents aren't touched.
@@ -278,6 +292,7 @@ refresh() {
   nvim --headless "+lua require('base46').load_all_highlights()" +qa >/dev/null 2>&1
   tmux source-file ~/.tmux.conf 2>/dev/null
   bar source-file "$conf" 2>/dev/null
+  tabs_catch_up
   local state="${XDG_STATE_HOME:-$HOME/.local/state}/nvim"
   mkdir -p "$state"
   local tty id file count=0
