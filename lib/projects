@@ -123,7 +123,7 @@ case "$1" in
       # a renamed project is still the same session.
       sid="$(env -u TMUX tmux display -p -t "=$name:" '#{session_id}')"
       while env -u TMUX tmux has-session -t "$sid" 2>/dev/null; do
-        env -u TMUX tmux attach -t "$sid"
+        env -u TMUX tmux attach -t "$sid" || sleep 1 # not a tight loop if it keeps failing
       done
       name="$(bar display -p -t "$TMUX_PANE" '#{window_name}')" || exit 0
       # Closing a project takes this tab away first (lib/project close). Still
