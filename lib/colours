@@ -71,7 +71,7 @@ case "$1" in
       key="$keys[$((n + 1))]"
       items+=("#[fg=${hex:-default}]●#[default] ${names[$((n + 1))]}" "$key" "run-shell -b '~/.local/bin/agvim _colours set $2 $4 $n'")
     done
-    srv "$2" display-menu -O -c "$3" -T "#[align=centre]Colour" -x M -y M "${items[@]}"
+    srv "$2" display-menu -O -M -c "$3" -T "#[align=centre]Colour" -x M -y M "${items[@]}"
     ;;
   theme)
     shift

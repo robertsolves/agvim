@@ -282,6 +282,7 @@ tabs_catch_up() {
     "$lib/colours" next work "$win"
   done
   "$lib/attention" sync
+  "$lib/attention" watch --restart </dev/null >/dev/null 2>&1 &!
 }
 
 # Loads changes to the setup without stopping anything: both tmux configs, Neovim's

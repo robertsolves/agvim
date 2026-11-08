@@ -101,6 +101,7 @@ case "$1" in
       [ -f "$store/.active" ] && bar select-window -t "=projects:=$(<"$store/.active")" 2>/dev/null
     fi
     autosave
+    "$repo/lib/attention" watch </dev/null >/dev/null 2>&1 &!
     # The worktree row under each project's name, which only a worktree event draws.
     for s in ${(f)"$(bar list-windows -t '=projects' -F '#{window_name}' 2>/dev/null)"}; do
       "$repo/lib/worktree" render "$s" >/dev/null 2>&1
