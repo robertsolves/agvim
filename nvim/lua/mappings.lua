@@ -11,7 +11,8 @@ end
 -- General Mappings
 --------------------------------------------------------------------------------
 
-map("n", "<Leader>//-", function()
+-- Space c-, not under Space /: that toggles a comment, and would wait for more keys.
+map("n", "<Leader>c-", function()
   require("configs.add_comment_separator").add_comment_separator()
 end, with_desc "Insert comment separator")
 
@@ -41,12 +42,14 @@ map("i", "<F19>", "<Esc>:w<CR>a", opts)
 --------------------------------------------------------------------------------
 
 -- Show the full message for the current line.
-map("n", "<Leader>xt", function()
+-- Problems are under Space q: Space x closes the buffer (NvChad), and keys under it
+-- would make it wait.
+map("n", "<Leader>qt", function()
   vim.diagnostic.open_float { scope = "line" }
 end, with_desc "Line diagnostics")
 
 -- Toggle inline error text.
-map("n", "<Leader>xv", function()
+map("n", "<Leader>qv", function()
   local on = not vim.diagnostic.config().virtual_text
   vim.diagnostic.config { virtual_text = on }
 end, with_desc "Toggle inline diagnostics")

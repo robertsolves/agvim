@@ -26,7 +26,7 @@ die() {
   [ -n "$session$popup" ] && [ -t 0 ] && { print -rn -- "Press Enter to close. "; read -r _; } # in a popup
   exit 1
 }
-clean() { local n="${1//[^[:alnum:]_-]/_}"; print -r -- "${n#-}"; }
+clean() { local LC_ALL=en_US.UTF-8 n="${1//[^[:alnum:]_-]/_}"; print -r -- "${n#-}"; } # same letters in any locale
 
 list_file() { print -r -- "$store/.worktrees/$1"; }
 rows() { [ -f "$(list_file "$1")" ] && cat "$(list_file "$1")"; }

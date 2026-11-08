@@ -1,8 +1,8 @@
 -- Load NvChad defaults (lua_ls, capabilities, LspAttach keymaps).
 require("nvchad.configs.lspconfig").defaults()
 
--- Diagnostics: no inline text by default (toggle with <leader>xv), signs and
--- underlines on, full message in a float with <leader>xt.
+-- Diagnostics: no inline text by default (toggle with <leader>qv), signs and
+-- underlines on, full message in a float with <leader>qt.
 vim.diagnostic.config {
   virtual_text = false,
   signs = true,

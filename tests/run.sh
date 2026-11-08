@@ -8,7 +8,7 @@ logs="$(mktemp -d /tmp/agvim-tests.XXXX)"
 "$root/macos/bundle.sh" --app-only >/dev/null || { print -r -- "couldn't build the app"; exit 1; }
 
 typeset -A expect=(
-  full 'guard message: 1|^stopped|stub programs alive: 0|MARK-SHELL on screen: [1-9]|lazygit|agvim-lazy|deleted '
+  full 'guard message: 1|^stopped|stub programs alive: 0|MARK-SHELL on screen: [1-9]|lazygit|agvim-kept|x on agvim: 0|deleted '
   app 'first run took|^ agvim|^  lazygit|click icon, running'
   menu 'open .*saved-projects|EXIT=0|Updated\.|couldn.t update|rc=1'
   name 'build server=1|build server named=1|while a program'

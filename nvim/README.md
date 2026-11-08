@@ -36,8 +36,8 @@ Leader is Space. `Space` then wait shows every key (which-key). `Space ch` opens
 | `gd` or `Space gd`, `Space gr`, `Space gi`, `Space fs` | definition, references, implementations, workspace symbols |
 | `K` or `Space I`, `Space ca`, `Space rs` | hover, code action, rename |
 | `Space fm` | format (also on save for Dart, Rust, Lua, Slint, Terraform; `:FormatToggle`) |
-| `Space xx` / `Space xt` / `Space xv` | all problems / line problem / inline problem text |
-| `Space xX` / `xL` / `xQ`, `Space cs` / `cl` | this file's problems / location list / quickfix list, symbols / LSP references (Trouble) |
+| `Space qq` / `Space qt` / `Space qv` | all problems / line problem / inline problem text |
+| `Space qb` / `ql` / `qf`, `Space cs` / `cl` | this file's problems / location list / quickfix list, symbols / LSP references (Trouble) |
 | `]e` / `[e`, `]d` / `[d` | next / previous error, diagnostic |
 | `Space ih` | inlay hints |
 | `Space rr` | project search and replace (regex) |
@@ -48,7 +48,7 @@ Leader is Space. `Space` then wait shows every key (which-key). `Space ch` opens
 | `Space Rr` `Rd` `Re` `Rm` `Rc` `dt` | Rust: run, debug, explain error, expand macro, open Cargo.toml, tests |
 | `Space sp` | Slint live preview |
 | `Space ac` `as` `ab` `aa` `ad` `af` `ar` `aC` | Claude Code: open, send selection, add file, accept/reject diff, focus, resume, continue |
-| `Space //-` | insert a comment separator line |
+| `Space c-` | insert a comment separator line |
 | Ctrl-W in a terminal | leave terminal mode (so it doesn't delete a word there) |
 | F13 / F14 / F15 / F16, F19 | Normal / Insert / Visual / Command mode from any mode; in insert mode save, in a terminal type `exit` |
 | Alt-g (anywhere, even in an agent terminal) | show / hide all git changes, side by side (like VS Code's Source Control) |

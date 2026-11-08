@@ -39,6 +39,10 @@ nvim_sessions="${XDG_STATE_HOME:-$HOME/.local/state}/nvim/agvim-sessions"
 # An agent starts with its flags (agents.tsv), and continues with them too.
 typeset -A resume=(nvim 'nvim .' lazygit lazygit)
 typeset -A launch
+# What a tab runs after an agent or a command of yours ends: a shell, so its output
+# stays and you can go on there. No longer an agent's tab (agvim send, the dots).
+# Neovim and lazygit tabs close instead; a project brings them back.
+then_shell='; tmux set-option -wu -t "$TMUX_PANE" @agent 2>/dev/null; exec "${SHELL:-/bin/zsh}" -l'
 while IFS=$'\t' read -r key agent again where flags; do
   [[ "$key" == \#* ]] && continue
   [ "$flags" = - ] && flags=""
@@ -64,6 +68,8 @@ folder_of() {
 
 # A name that's safe as a file, tmux target and format.
 clean() {
+  # The same letters count wherever it runs (Finder runs it with no UTF-8 locale).
+  local LC_ALL=en_US.UTF-8
   local n="${1//[^[:alnum:] _-]/_}"
   [[ "$n" == -* ]] && n="_${n#-}"
   print -r -- "$n"
@@ -195,9 +201,8 @@ restore() {
     if [ "$prog" = nvim ] && [ -s "$dir/$idx.$pane.vim" ]; then
       cmd=("nvim -S ${(q)dir}/$idx.$pane.vim; true")
     elif [ "$prog" != - ] && [ -n "$resume[$prog]" ]; then
-      # "; true" keeps a shell above it, like every tab that runs a program. An agent
-      # that's no longer in agents.tsv has no entry, and comes back as a shell.
-      cmd=("$resume[$prog]; true")
+      # An agent that's no longer in agents.tsv has no entry, and comes back as a shell.
+      if [[ "$prog" == (nvim|lazygit) ]]; then cmd=("$resume[$prog]; true"); else cmd=("$resume[$prog]$then_shell"); fi
     elif [ -s "$dir/$idx.$pane.txt" ]; then
       cmd=("cat ${(q)dir}/$idx.$pane.txt; exec ${(q)${SHELL:-/bin/zsh}}")
     fi
@@ -576,6 +581,7 @@ case "$cmd" in
     ;;
   shell) new_shell ;;
   close) close "$1" "$2" ;;
+  clean-name) clean "$1" ;;                # for projects close-now
   close-tab)                              # agvim close: finds the bar's tab itself
     check_name "$1"
     [ "$1" != agvim ] || die "agvim always stays: it's where you update it from"
@@ -624,11 +630,10 @@ case "$cmd" in
     if [ $# -eq 0 ]; then
       "$lib/tab" new "$(tmux display -p -t "=$name:" '#{session_id}')"
     else
-      # "; true" keeps a shell above it, like every tab that runs a program (the tab
-      # closes when it ends). An agent gets its flags.
+      # A shell when it ends ($then_shell). An agent gets its flags.
       run="$*"
       [ $# -eq 1 ] && [ -n "$launch[$1]" ] && run="$launch[$1]"
-      win_id="$(tmux new-window -P -F '#{window_id}' -t "=$name:" -n "${1:t}" -c "$(tmux display -p -t "=$name:" '#{session_path}')" "$run; true")"
+      win_id="$(tmux new-window -P -F '#{window_id}' -t "=$name:" -n "${1:t}" -c "$(tmux display -p -t "=$name:" '#{session_path}')" "$run$then_shell")"
       # An agent's tab is marked, for agvim send and the list of agents.
       [ $# -eq 1 ] && [ -n "$launch[$1]" ] && tmux set-option -w -t "$win_id" @agent "$1"
     fi

@@ -166,8 +166,21 @@ case "$1" in
     else
       question="Close ${name//\#/##} and all its tabs? (y/n)"
     fi
+    # Only the window's id in the command: a name with a quote would break it.
     bar confirm-before -b -t "$2" -p "$question" \
-      "run-shell -b \"~/.local/bin/agvim _project close '$name' '$3' >/dev/null 2>&1 ; true\""
+      "run-shell -b \"~/.local/bin/agvim _projects close-now '$3' >/dev/null 2>&1 ; true\""
+    ;;
+  close-now)
+    # Answered yes. A tmux session of yours with a name AgVim wouldn't give a project
+    # (lib/project clean) isn't one of its projects: it just stops.
+    name="$(bar display -p -t "$2" '#{window_name}')"
+    [ -n "$name" ] && [ "$name" != agvim ] || exit 0
+    if [ -f "$store/$name" ] || [ "$name" = "$("$repo/lib/project" clean-name "$name")" ]; then
+      "$repo/lib/project" close "$name" "$2"
+    else
+      bar kill-window -t "$2"
+      work kill-session -t "=$name"
+    fi
     ;;
   stop)
     # The bar's client-detached hook runs this with no --now. With "keep terminals

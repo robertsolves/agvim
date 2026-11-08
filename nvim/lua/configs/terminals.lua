@@ -71,10 +71,10 @@ function M.new(name, cmd)
   if port then
     vim.list_extend(args, { "-e", "CLAUDE_CODE_SSE_PORT=" .. port, "-e", "ENABLE_IDE_INTEGRATION=true" })
   end
-  -- "; true" keeps a shell above the agent, like every tab that runs a program (the
-  -- tab closes when it exits). Closing the project saves which agent ran here, to
-  -- start it again (lib/project).
-  table.insert(args, cmd .. "; true")
+  -- When the agent exits, the tab becomes a shell: its output stays, and it's no
+  -- longer an agent's tab (then_shell in lib/project). Closing the project saves
+  -- which agent ran here, to start it again (lib/project).
+  table.insert(args, cmd .. '; tmux set-option -wu -t "$TMUX_PANE" @agent 2>/dev/null; exec "${SHELL:-/bin/zsh}" -l')
   -- Marked as an agent's tab, for agvim send and the list of agents.
   vim.list_extend(args, { ";", "set-option", "-w", "@agent", name })
   tmux(args)
