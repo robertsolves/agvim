@@ -65,18 +65,25 @@ sync_bar() {
 # What runs in the foreground of terminal $1: agent (a program named in agents.tsv,
 # also under node or python), ui (one that waits for you, like Neovim), busy
 # (anything else: a build, tests, a server), or nothing at its shell. Shells and
-# their "zsh -c" wrappers don't count. One terminal's `ps -t` is cheap; all of
-# them at once (ps -ax) costs a tenth of a second of CPU.
+# their "zsh -c" wrappers don't count. "new" for a terminal under five seconds old:
+# what runs while a shell starts (its .zshrc) isn't work. One terminal's `ps -t` is
+# cheap; all of them at once (ps -ax) costs a tenth of a second of CPU.
 fg_kind() {
-  ps -t "${1#/dev/}" -o stat=,args= 2>/dev/null | awk -v names=" ${agents[*]} " -v uis=" nvim vim vi lazygit less more man htop top btop tig fzf " '
+  ps -t "${1#/dev/}" -o stat=,etime=,args= 2>/dev/null | awk -v names=" ${agents[*]} " -v uis=" nvim vim vi lazygit less more man htop top btop tig fzf " '
+    # etime is [[dd-]hh:]mm:ss; the session leader is the terminal'"'"'s first process.
+    $1 ~ /s/ { e = $2; d = 0; if (index(e, "-")) { d = substr(e, 1, index(e, "-") - 1); e = substr(e, index(e, "-") + 1) }
+               c = split(e, t, ":")
+               if (c == 3) age = d * 86400 + t[1] * 3600 + t[2] * 60 + t[3]; else age = d * 86400 + t[1] * 60 + t[2]
+               if (age < 5) young = 1 }
     $1 ~ /\+/ {
-      n = $2; sub(/.*\//, "", n); sub(/^-/, "", n)
-      if (n ~ /^(zsh|bash|fish|sh|dash|ksh)$/) next
-      if (n ~ /^(node|bun|deno|python[0-9.]*)$/ && NF >= 3) { m = $3; sub(/.*\//, "", m); sub(/\.js$/, "", m); if (index(names, " " m " ")) n = m }
+      n = $3; sub(/.*\//, "", n); sub(/^-/, "", n)
+      # A shell running a script is that script (an agent launched by one), not "zsh -c".
+      if (n ~ /^(zsh|bash|fish|sh|dash|ksh)$/) { if (NF < 4 || $4 ~ /^-/) next; m = $4; sub(/.*\//, "", m); if (!index(names, " " m " ")) next; n = m }
+      if (n ~ /^(node|bun|deno|python[0-9.]*)$/ && NF >= 4) { m = $4; sub(/.*\//, "", m); sub(/\.js$/, "", m); if (index(names, " " m " ")) n = m }
       r = index(names, " " n " ") ? 3 : (index(uis, " " n " ") ? 2 : 1)
       if (r > k) k = r
     }
-    END { print (k == 3 ? "agent" : (k == 2 ? "ui" : (k == 1 ? "busy" : ""))) }'
+    END { if (young) print "new"; else print (k == 3 ? "agent" : (k == 2 ? "ui" : (k == 1 ? "busy" : ""))) }'
 }
 
 # Every tab's dot, every second, without anyone's help:
@@ -95,6 +102,7 @@ watch_tick() {
   # Few processes a second: the window shown in a focused window of the bar, and
   # every tab with its clients, each in one tmux call.
   local bar_rows rows
+  local -A seen
   bar_rows=("${(@f)$(bar display -p -t '=projects:' '#{pane_tty}' \; list-clients -F '#{client_flags}' 2>/dev/null)}")
   flags="${(j: :)bar_rows[2,-1]}" # also for the loop in watch: how often to look
   # "-" for no value: read joins empty fields between tabs.
@@ -109,6 +117,7 @@ watch_tick() {
     [[ "$line" == W* ]] || continue
     f=("${(@ps:\t:)line}") # (not read <<<: zsh writes a file for each)
     win="$f[2]" state="$f[3]" at="$f[4]" was="$f[5]" tty="$f[6]" act="$f[7]" cmd="$f[8]"
+    seen[$tty]=1
     # What runs there is looked up again when the program in front changes, and
     # every ten seconds anyway (an agent behind a "zsh -c" wrapper).
     if [ "$sig_of[$tty]" != "$cmd" ] || (( now - ${looked_at[$tty]:-0} >= 10 )); then
@@ -120,6 +129,7 @@ watch_tick() {
     [ "$state" != - ] || state=""
     case "$kind" in
       ui) unset "busy_since[$win]"; continue ;;
+      new) unset "busy_since[$win]"; looked_at[$tty]=0; continue ;; # look again next second
       "")
         unset "busy_since[$win]"
         [ -n "$state" ] || continue
@@ -162,6 +172,11 @@ watch_tick() {
       if [ "$win" = "$shown" ]; then tmux set-option -wu -t "$win" @agent-state; else put "$win" done; fi
       changed=1
     fi
+  done
+  # Terminals that have gone: a new tab can get the same one.
+  local t
+  for t in "${(@k)kind_of}"; do
+    [ -n "$seen[$t]" ] || unset "kind_of[$t]" "sig_of[$t]" "looked_at[$t]"
   done
   [ -n "$changed" ] || return 0
   sync_bar

@@ -114,10 +114,18 @@ current() {
   print -r -- "$s"
 }
 
+# The same, but in a worktree's session (lib/worktree) the project it belongs to.
+current_project() {
+  local s p
+  s="$(current)" || return 1
+  p="$(tmux show-options -qv -t "=$s:" @parent 2>/dev/null)"
+  print -r -- "${p:-$s}"
+}
+
 # -p, else the project you're in, else stop.
 which_project() {
   [ -n "$project" ] && { print -r -- "$project"; return; }
-  current || die "not in a project: say which with -p <name>"
+  current_project || die "not in a project: say which with -p <name>"
 }
 
 # The same, but a + Shell console counts too: it has tabs, just no saved folders.
@@ -348,7 +356,7 @@ case "$cmd" in
     parse "$@"
     folder="$(folder_arg "$args[1]")" || exit 1
     [ -n "$no_open" ] && export AW_NO_OPEN=1
-    [ -n "$project" ] || project="$(current)"
+    [ -n "$project" ] || project="$(current_project)"
     [ -n "$project" ] || exec "$lib/project" new "$folder"
     exec "$lib/project" add "$project" "$folder"
     ;;
@@ -387,7 +395,7 @@ case "$cmd" in
       target="$project"
     else
       # The project you're in, else ask which.
-      target="$(current)" || target="$(pick_project "rename")" || exit 0
+      target="$(current_project)" || target="$(pick_project "rename")" || exit 0
     fi
     new_name="$args[1]"
     if [ -z "$new_name" ]; then
