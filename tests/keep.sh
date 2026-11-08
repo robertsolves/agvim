@@ -13,7 +13,8 @@ export PATH="$HOME/stubs:$HOME/.local/bin:$PATH"
 print 'set -g default-terminal xterm-256color' > ~/outer.conf
 o() { tmux -L outer "$@"; }; b() { tmux -L projects "$@"; }
 win() { tmux list-windows -t "=${1:-A}" -F '#W' 2>&1 | tr '\n' ',' ; echo; }
-window() { o -f ~/outer.conf new-session -d -s o -x 120 -y 30 "$1; sleep 300"; o set -g status off; sleep 3; }
+upto() { local i; for i in {1..$1}; do eval "$2" && return; sleep .5; done; } # waits for a check, so a busy Mac doesn't fail it
+window() { o -f ~/outer.conf new-session -d -s o -x 120 -y 30 "$1; sleep 300"; o set -g status off; upto 60 "b list-clients 2>/dev/null | grep -q ."; sleep 3; }
 closewin() { kill -HUP $(b list-clients -F '#{client_pid}') 2>/dev/null; sleep 2.5; o kill-server 2>/dev/null; sleep .3; }
 agvim new ~/code/a -n A --no-open; agvim new ~/code/b -n B --no-open
 
@@ -39,7 +40,7 @@ echo "A back: $(win)"
 
 echo "--- a crash: both servers gone at once"
 b kill-server; tmux kill-server; sleep .5
-o kill-server 2>/dev/null; window "agvim continue"; b select-window -t '=projects:=A'; sleep 2.5
+o kill-server 2>/dev/null; window "agvim continue"; upto 20 "b list-windows -t '=projects' -F '#W' | grep -qx A"; b select-window -t '=projects:=A'; upto 40 "win | grep -q 'late tab'"
 echo "after crash: $(win)"
 
 echo "--- the menu's switch"

@@ -14,7 +14,9 @@ win() { tmux list-windows -t '=A' -F '#W' 2>&1 | tr '\n' ',' ; echo; }
 list() { agvim list | grep -v '^agvim' | sed "s#$HOME/code/##g"; }
 agvim keep-running off >/dev/null # this test is about closing stopping things; tests/keep.sh has the default
 agvim new ~/code/a -n A --no-open; agvim add ~/code/b -p A --no-open
-o -f ~/outer.conf new-session -d -s o -x 120 -y 30 "agvim open -p A; sleep 200"; o set -g status off; sleep 3
+upto() { local i; for i in {1..$1}; do eval "$2" && return; sleep .5; done; } # waits for a check, so a busy Mac doesn't fail it
+o -f ~/outer.conf new-session -d -s o -x 120 -y 30 "agvim open -p A; sleep 200"; o set -g status off
+upto 60 "tmux list-clients -t '=A' -F . 2>/dev/null | grep -q . && win | grep -q ',b,'"; sleep 1
 echo "opened:   $(win)"; list
 C=$(tmux list-clients -t '=A' -F '#{client_name}' | head -1); W=$(tmux list-windows -t '=A' -F '#W #{window_id}' | awk '$1=="b"{print $2}')
 agvim _tab new "$(tmux display -p -t '=A:' '#{session_id}')"; sleep .4

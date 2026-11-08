@@ -18,8 +18,10 @@ git config --global user.email t@t; git config --global user.name t; git config 
 print 'set -g default-terminal xterm-256color' > ~/outer.conf
 o() { tmux -L outer "$@"; }; b() { tmux -L projects "$@"; }
 screen() { o capture-pane -p -t o | sed -E 's/ +$//'; }
+upto() { local i; for i in {1..$1}; do eval "$2" && return; sleep .5; done; } # waits for a check, so a busy Mac doesn't fail it
 agvim new ~/code/a -n A --no-open
-o -f ~/outer.conf new-session -d -s o -x 140 -y 30 "agvim open -p A; sleep 300"; o set -g status off; sleep 3
+o -f ~/outer.conf new-session -d -s o -x 140 -y 30 "agvim open -p A; sleep 300"; o set -g status off
+upto 60 "b show -wv -t '=projects:=A' @colour 2>/dev/null | grep -q . && [ \$(tmux list-windows -t '=A' -F '#{@colour}' 2>/dev/null | sort -u | grep -c .) -ge 3 ]"; sleep 1
 
 echo "--- colours"
 tmux list-windows -t "=A" -F "#{@colour}" | sort -u | grep -c . | xargs echo "different tab colours:"
