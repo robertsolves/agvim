@@ -85,7 +85,7 @@ Swift and Objective-C in `ios/` need to know the Xcode project. Once per app: bu
 
 ## Opening projects
 
-Each project is a tab along the top: a name and one or more folders, saved in `saved-projects/` of the repo. Inside it, window 1 runs Neovim, then lazygit (it comes back every time you open the project, even if you closed it), then "shell 1", in the first folder (Alt-1, Alt-2...), and each other folder gets a Neovim tab of its own. Closing a project or its terminal window saves its tabs and stops them; opening it again brings them back, agents continuing their last conversation.
+Each project is a tab along the top: a name and one or more folders, saved in `saved-projects/` of the repo. Inside it, window 1 runs Neovim, then lazygit (both come back every time you open the project, even if you closed them), then "shell 1", in the first folder (Alt-1, Alt-2...), and each other folder gets a Neovim tab of its own. Closing a project or its terminal window saves its tabs and stops them; opening it again brings them back, agents continuing their last conversation.
 
 - Finder: right-click a folder → **New AgVim Project** or **Add to AgVim Project**. Source: `macos/finder/` in this repo.
 - Inside the workspace: `+ Project` at the top, or prefix (Ctrl-Space) then `P` or `s`: open a saved project, make a new one from any folder, or add a folder to this one. `+ Shell` opens a console that isn't a project.

@@ -164,7 +164,8 @@ save() {
   mv "$dir/tabs.tmp" "$dir/tabs"
 }
 
-# Rebuilds exactly the tabs project $1 had, so one you closed stays closed; $2 is its
+# Rebuilds exactly the tabs project $1 had, so one you closed stays closed (start puts
+# Neovim and lazygit back); $2 is its
 # first folder.
 restore() {
   local name="$1"
@@ -175,8 +176,9 @@ restore() {
   typeset -A layouts
   while IFS=$'\t' read -r idx win act layout folder pane where prog named ftab colour; do
     [ "$where" != - ] && [ -d "$where" ] || where="$first"
-    # Quit before it was saved, it's still the lazygit tab.
+    # Quit before it was saved, it's still the Neovim or lazygit tab.
     [ "$win" = lazygit ] && [ "$pane" = 1 ] && prog=lazygit
+    [ "$win" = nvim ] && [ "$pane" = 1 ] && [ "$prog" = - ] && prog=nvim
     cmd=()
     if [ "$prog" = nvim ] && [ -s "$dir/$idx.$pane.vim" ]; then
       cmd=("nvim -S ${(q)dir}/$idx.$pane.vim; true")
@@ -230,10 +232,15 @@ save_soon() {
   } >/dev/null 2>&1 </dev/null &!
 }
 
-# Every project opens with a lazygit tab beside Neovim, even if you closed it.
+# Every project opens with its Neovim tab first and lazygit beside it, even if you
+# closed them.
 ensure_lazygit() {
   local windows
   windows="$(tmux list-windows -t "=$1" -F '#{window_name}')"
+  if ! print -r -- "$windows" | grep -qx nvim; then
+    tmux new-window -d -b -t "=$1:^" -n nvim -c "$2" "nvim .; true"
+    windows+=$'\nnvim'
+  fi
   print -r -- "$windows" | grep -qx lazygit && return 0
   if print -r -- "$windows" | grep -qx nvim; then
     tmux new-window -d -a -t "=$1:=nvim" -n lazygit -c "$2" "lazygit; true"

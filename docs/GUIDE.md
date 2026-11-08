@@ -10,7 +10,7 @@ Or type `agvim` in any terminal. It asks what you want to do.
 
 **Projects** are the tabs along the top. A project is a name and one or more folders. Use `+ Project` to open one, make one from any folder, or add a folder to the one you're in. `+ Shell` opens a terminal that isn't part of any project. The `agvim` tab is always first, so you can update AgVim from inside it.
 
-**Tabs** inside a project run along the bottom, each full screen: Neovim, lazygit, a shell, and as many more shells and agents as you want. What you closed stays closed, including a project's other folders, which also leave the project. Only lazygit always comes back when you open a project, along with the `agvim` tab. `+ Shell` adds a shell.
+**Tabs** inside a project run along the bottom, each full screen: Neovim, lazygit, a shell, and as many more shells and agents as you want. What you closed stays closed, including a project's other folders, which also leave the project. Only Neovim and lazygit always come back when you open a project, along with the `agvim` tab. `+ Shell` adds a shell.
 
 **The look**: near-black with silver, based on the dark_horizon theme, in Neovim, the tab bars and shells, with highlighting for Dart and Flutter, Rust, Python, TypeScript, Bash, JSON, Swift, Lua, YAML, TOML, Markdown and more. In Neovim, `Space th` picks another theme, though the silver overrides in `nvim/lua/chadrc.lua` only apply to this one.
 
