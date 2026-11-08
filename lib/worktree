@@ -23,7 +23,7 @@ unset TMUX
 bar() { command tmux -L projects "$@"; }
 die() {
   print -r -- "agvim: $1" >&2
-  [ -n "$session" ] && [ -t 0 ] && { print -rn -- "Press Enter to close. "; read -r _; } # in a popup
+  [ -n "$session$popup" ] && [ -t 0 ] && { print -rn -- "Press Enter to close. "; read -r _; } # in a popup
   exit 1
 }
 clean() { local n="${1//[^[:alnum:]_-]/_}"; print -r -- "${n#-}"; }
@@ -65,6 +65,22 @@ show() {
   render "$1"
 }
 
+# The dot before a worktree's name: always there, so the row never changes width.
+# Grey nothing, green working, amber waiting for you, blue done (lib/attention).
+dot_of() {
+  local st colour
+  st="$(tmux list-windows -t "=$1" -F '#{@agent-state}' 2>/dev/null | awk '
+    $1 == "waiting" { w = 1 } $1 == "working" { k = 1 } $1 == "done" { d = 1 }
+    END { print (w ? "waiting" : (k ? "working" : (d ? "done" : ""))) }')"
+  case "$st" in
+    waiting) colour="#e5a54b" ;;
+    working) colour="#7fbf7f" ;;
+    done) colour="#61afef" ;;
+    *) colour="#5f646c" ;;
+  esac
+  print -r -- "#[fg=$colour]● "
+}
+
 # The row under the projects bar for project $1 (@wt and @wt-right on its tab).
 render() {
   local p="$1" win shown out="" n=0 line s branch dir repo base dot
@@ -87,14 +103,13 @@ render() {
     [ "$4" = 1 ] && x="#[range=user|c${1#w}]#[fg=#5f646c] 󰅖 #[norange]"
     out+="#[range=user|$1]$style  $3${style}${2//\#/##} #[norange]${x}#[bg=#202226,fg=#b4b9c0,nobold]"
   }
-  item w0 "$main_branch" "" 0 "$([ "$shown" = "$p" ] && print 1)"
+  item w0 "$main_branch" "$(dot_of "$p")" 0 "$([ "$shown" = "$p" ] && print 1)"
   local right=""
   while IFS= read -r line; do
     [ -n "$line" ] || continue
     n=$((n + 1))
     s="$(field "$line" 1)"; branch="$(field "$line" 2)"; dir="$(field "$line" 3)"; base="$(field "$line" 5)"
-    dot=""
-    tmux list-windows -t "=$s" -F '#{@attention}' 2>/dev/null | grep -q . && dot="#[fg=#e5a54b]● "
+    dot="$(dot_of "$s")"
     item "w$n" "⎇ $branch" "$dot" 1 "$([ "$shown" = "$s" ] && print 1)"
     if [ "$shown" = "$s" ]; then
       right="#[fg=#7f858e]#(~/.local/bin/agvim _worktree stat ${(q)dir} ${(q)base}) #[range=user|wtmerge]#[fg=#2c2e33]#[bg=#2c2e33,fg=#e6e8eb] Merge #[bg=#202226,fg=#2c2e33]#[norange] "
@@ -164,7 +179,8 @@ new() {
     if [ -t 0 ]; then
       local installed
       installed="$(grep -v '^#' "$lib/agents.tsv" | cut -f2 | while read -r a; do command -v "$a" >/dev/null && print -r -- "$a"; done)"
-      agent="$(print -r -- "none${installed:+$'\n'$installed}" | fzf --height=~15 --reverse --no-info --prompt="agent to start> ")" || agent=none
+      agent="$(print -r -- "none${installed:+
+$installed}" | fzf --height=~15 --reverse --no-info --prompt="agent to start> ")" || agent=none
     else
       agent=none
     fi
@@ -343,7 +359,17 @@ here_project() {
 
 cmd="$1"
 [ $# -gt 0 ] && shift
-project="" agent="" session="" args=()
+if [ "$cmd" = popup ]; then
+  # popup <work|bar> <client> <width>x<height> <command...>: tmux fills in #{...} for
+  # run-shell but not inside a popup's own command, so the bindings come here first.
+  exec >/dev/null 2>&1
+  srv="$1" client="$2" size="$3"
+  shift 3
+  if [ "$srv" = bar ]; then tmuxc=(tmux -L projects); else tmuxc=(tmux); fi
+  words="${(j: :)${(@q)@}}" # one string: "$@" inside a longer string would split it
+  exec "${tmuxc[@]}" display-popup -c "$client" -E -w "${size%x*}%" -h "${size#*x}%" "env -u TMUX ~/.local/bin/agvim _worktree $words"
+fi
+project="" agent="" session="" popup="" args=()
 while [ $# -gt 0 ]; do
   case "$1" in
     -p) project="$2"; shift 2 ;;
@@ -362,6 +388,7 @@ case "$cmd" in
     exit "$rc"
     ;;
   new-here) # the bar's + Worktree, in a popup
+    popup=1
     new "$args[1]" "" ""; rc=$?
     [ "$rc" = 0 ] || [ "$rc" = 3 ] || { print -rn -- "Press Enter to close. "; read -r _; }
     ;;
@@ -383,6 +410,7 @@ case "$cmd" in
     if [ -n "$session" ]; then print -rn -- "Press Enter to close. "; read -r _; fi
     ;;
   merge-here) # the bar's Merge, in a popup
+    popup=1
     s="$(current_wt "$args[1]")" && merge "$args[1]" "$s"
     print -rn -- "Press Enter to close. "; read -r _
     ;;
@@ -422,6 +450,7 @@ case "$cmd" in
     exit 0
     ;;
   close-ask)
+    popup=1
     close "$args[1]" "$args[2]"
     sleep 1
     ;;

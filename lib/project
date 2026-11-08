@@ -288,7 +288,7 @@ tabs_catch_up() {
 # colours, and each running Neovim restarts with the same files and splits. Shells
 # and agents aren't touched.
 refresh() {
-  local conf="${0:A:h:h}/tmux/projects.conf"
+  local conf="${lib:h}/tmux/projects.conf" # not ${0:A...}: in a function $0 is its name
   nvim --headless "+lua require('base46').load_all_highlights()" +qa >/dev/null 2>&1
   tmux source-file ~/.tmux.conf 2>/dev/null
   bar source-file "$conf" 2>/dev/null

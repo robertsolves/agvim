@@ -61,10 +61,14 @@ case "$1" in
     fi
     ;;
   menu)
+    # The click that chose "Colour" in the menu before this one is still going: a
+    # menu opened at once would take its release as a click outside and close.
+    sleep 0.3
+    keys=(0 1 2 3 4 5 6 7 8 9 a b c d e f)
     items=()
     for n in {0..15}; do
       hex="$(srv "$2" show-options -gqv "@c$n")"
-      key="${${(@):-0 1 2 3 4 5 6 7 8 9 a b c d e f}[$((n + 1))]}"
+      key="$keys[$((n + 1))]"
       items+=("#[fg=${hex:-default}]●#[default] ${names[$((n + 1))]}" "$key" "run-shell -b '~/.local/bin/agvim _colours set $2 $4 $n'")
     done
     srv "$2" display-menu -O -c "$3" -T "#[align=centre]Colour" -x M -y M "${items[@]}"

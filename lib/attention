@@ -15,6 +15,7 @@
 # Prints nothing and always exits 0: tmux hooks and agents run it.
 exec >/dev/null 2>&1
 unset TMUX
+here="${0:A:h}" # a function's own $0 is its name, so this is set out here
 bar() { command tmux -L projects "$@"; }
 
 # The window you're looking at in the project tmux, if a window shows the bar.
@@ -35,18 +36,20 @@ focused() {
 sync_bar() {
   bar has-session -t '=projects' || return 0
   local f
-  for f in "${0:A:h:h}"/saved-projects/.worktrees/*(N.); do
-    "${0:A:h}/worktree" render "${f:t}"
+  for f in "${here:h}"/saved-projects/.worktrees/*(N.); do
+    "$here/worktree" render "${f:t}"
   done
-  local marked
-  marked="$(tmux list-windows -a -F '#{session_name}	#{@parent}	#{@attention}' | awk -F'\t' '$3 != "" { print $1; if ($2 != "") print $2 }' | sort -u)"
-  local win name state
-  bar list-windows -t '=projects' -F '#{window_id}	#{window_name}	#{@attention}' | while IFS=$'\t' read -r win name state; do
-    if print -r -- "$marked" | grep -qxF -- "$name"; then
-      [ -n "$state" ] || bar set-option -w -t "$win" @attention 1
-    else
-      [ -z "$state" ] || bar set-option -wu -t "$win" @attention
-    fi
+  # Each project's busiest state: waiting, then working, then done.
+  local busiest
+  busiest="$(tmux list-windows -a -F '#{session_name}	#{@parent}	#{@agent-state}' | awk -F'\t' '
+    $3 != "" { p = ($2 != "" ? $2 : $1); r = ($3 == "waiting" ? 3 : ($3 == "working" ? 2 : 1))
+               if (r > best[p]) { best[p] = r; st[p] = $3 } }
+    END { for (p in st) print p "\t" st[p] }')"
+  local win name state new
+  bar list-windows -t '=projects' -F '#{window_id}	#{window_name}	#{@agent-state}' | while IFS=$'\t' read -r win name state; do
+    new="$(print -r -- "$busiest" | awk -F'\t' -v n="$name" '$1 == n { print $2 }')"
+    [ "$new" = "$state" ] && continue
+    if [ -n "$new" ]; then bar set-option -w -t "$win" @agent-state "$new"; else bar set-option -wu -t "$win" @agent-state; fi
   done
 }
 
@@ -63,7 +66,8 @@ mark() { # window, state
   local win="$1" state="${2:-done}" shown
   shown="$(visible)"
   if [ "$win" = "$shown" ] && focused; then
-    return 0 # you're looking at it
+    sync_bar
+    return 0 # you're looking at it: no alert, the dot still follows
   fi
   tmux set-option -w -t "$win" @agent-state "$state" # stays after you look (lib/running)
   tmux set-option -w -t "$win" @attention "$state"
@@ -94,6 +98,13 @@ case "$1" in
   sync)
     shown="$(visible)"
     [ -z "$shown" ] || tmux set-option -wu -t "$shown" @attention
+    # Back at its shell: the agent has quit, so it is neither working nor waiting.
+    local win state cmd
+    tmux list-windows -a -F '#{window_id}	#{@agent-state}	#{pane_current_command}' | while IFS=$'\t' read -r win state cmd; do
+      [[ "$state" == (working|waiting) && "$cmd" == (-|)(zsh|bash|fish|sh) ]] || continue
+      tmux set-option -wu -t "$win" @agent-state
+      tmux set-option -wu -t "$win" @attention
+    done
     # The agent tab you looked at last is where agvim send sends (lib/send).
     for line in ${(f)"$(tmux list-sessions -F '#{session_id}	#{window_id}	#{@agent}	#{pane_current_command}')"}; do
       parts=("${(@s:	:)line}")
