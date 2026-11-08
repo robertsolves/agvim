@@ -117,7 +117,7 @@ return {
     opts = {},
   },
 
-  { "tpope/vim-fugitive", cmd = { "Git", "G", "Gdiffsplit", "Gblame" } },
+  { "tpope/vim-fugitive", cmd = { "Git", "G", "Gdiffsplit" } },
 
   -- VS Code's Source Control view: every changed file in a list, side-by-side
   -- diffs, stage/unstage with `-`, and file history. Good for reviewing what an

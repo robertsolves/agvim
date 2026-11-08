@@ -54,7 +54,7 @@ trap 'rm -f "$out"' EXIT
 code="$(printf 'header = "%s"\nheader = "content-type: application/json"\n%s\n' "$header" "$extra" |
   curl -sS -m 30 -o "$out" -w '%{http_code}' -K - -X POST -d "$body" "$url" 2>/dev/null)"
 message="$(sed -nE 's/.*"(message|detail|error)"[[:space:]]*:[[:space:]]*"([^"]*)".*/\2/p' "$out" | head -1 | cut -c1-160)"
-[ -z "$key" ] || message="${message//$key/...}"
+[ -z "$key" ] || message="${message//"$key"/...}"
 case "$code" in
   2*) print -r -- "It works: it answered with this key and model."; exit 0 ;;
   401 | 403) print -r -- "It refused this key. ${message}"; exit 2 ;;

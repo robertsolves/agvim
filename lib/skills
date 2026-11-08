@@ -191,7 +191,7 @@ cmd="$1"
 [ $# -gt 0 ] && shift
 while [ $# -gt 0 ]; do
   case "$1" in
-    -C) dir="$2"; shift 2 ;;
+    -C) [ $# -ge 2 ] || die "-C needs a folder"; dir="$2"; shift 2 ;;
     *) args+=("$1"); shift ;;
   esac
 done
@@ -219,13 +219,21 @@ case "$cmd" in
         where="$args[2]"
         [ -d "$where" ] && where="${where:A}"
         name="${args[3]:-${${where:t}%.git}}"
+        [[ "$name" != */* && "$name" != .* ]] || die "not a name for a source: $name"
         sources >/dev/null
         awk -F'\t' -v s="$name" '$1 == s' "$config" | grep -q . && die "there's a source called $name already"
         print -r -- "$name${tab}$where" >>"$config"
-        folder_of "$name" "$where" >/dev/null && print -r -- "Added $name."
+        # A source that can't be fetched isn't kept as a broken row.
+        if folder_of "$name" "$where" >/dev/null; then
+          print -r -- "Added $name."
+        else
+          awk -F'\t' -v s="$name" '$1 != s' "$config" >"$config.tmp" && mv "$config.tmp" "$config"
+          die "couldn't get $where"
+        fi
         ;;
       remove)
         [ -n "$args[2]" ] || die "usage: agvim skills source remove <name>"
+        [[ "$args[2]" != */* && "$args[2]" != .* ]] || die "not a source: $args[2]"
         sources >/dev/null
         awk -F'\t' -v s="$args[2]" '$1 != s' "$config" >"$config.tmp" && mv "$config.tmp" "$config"
         rm -rf -- "$cache/$args[2]"

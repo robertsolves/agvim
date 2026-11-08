@@ -135,7 +135,10 @@ stat() {
 copy_included() {
   local repo="$1" dir="$2" f
   [ -f "$repo/.worktreeinclude" ] || return 0
-  git -C "$repo" ls-files --others --ignored --exclude-from="$repo/.worktreeinclude" 2>/dev/null | while IFS= read -r f; do
+  # Only what matches and is also gitignored (tracked files are in the worktree already);
+  # -z keeps names with non-ASCII characters from being quoted.
+  git -C "$repo" ls-files -z --others --ignored --exclude-from="$repo/.worktreeinclude" 2>/dev/null |
+    git -C "$repo" check-ignore -z --stdin 2>/dev/null | while IFS= read -r -d '' f; do
     mkdir -p "$dir/${f:h}"
     cp -p "$repo/$f" "$dir/$f"
   done
@@ -199,6 +202,9 @@ $installed}" | fzf --height=~15 --reverse --no-info --prompt="agent to start> ")
   key="$(clean "$name")"
   s="$p-wt-$key"
   dir="$home/$(clean "${main:t}")/$key"
+  local taken
+  taken="$(field "$(row_of "$p" "$s")" 2)"
+  [ -z "$taken" ] || [ "$taken" = "$name" ] || die "a worktree called $key exists already (branch $taken)"
   tmux has-session -t "=$s" 2>/dev/null && { show "$p" "$s"; return; }
   mkdir -p "${dir:h}"
   if [ -n "$existing" ]; then
@@ -382,9 +388,13 @@ fi
 project="" agent="" session="" popup="" args=()
 while [ $# -gt 0 ]; do
   case "$1" in
-    -p) project="$2"; shift 2 ;;
-    -P) session="$2"; project="$(project_of "$2")"; shift 2 ;; # a session: its project (popups)
-    --agent) agent="$2"; shift 2 ;;
+    -p | -P | --agent) [ $# -ge 2 ] || die "$1 needs a value"
+      case "$1" in
+        -p) project="$2" ;;
+        -P) session="$2"; project="$(project_of "$2")" ;; # a session: its project (popups)
+        *) agent="$2" ;;
+      esac
+      shift 2 ;;
     *) args+=("$1"); shift ;;
   esac
 done

@@ -24,6 +24,7 @@ return {
   "java",
   "objc",
   "xml",
+  "properties",
   -- Rust / Bevy / Slint
   "rust",
   "toml",

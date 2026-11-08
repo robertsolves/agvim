@@ -91,6 +91,9 @@ esac
 # The project you're in: this tmux's session, or from the bar's + the tab it shows.
 if [ -n "$TMUX" ]; then
   export AW_CURRENT="$(tmux display -p '#{session_name}')"
+  # In a worktree, the project it belongs to.
+  parent="$(tmux show-options -qv -t "=$AW_CURRENT:" @parent 2>/dev/null)"
+  [ -z "$parent" ] || export AW_CURRENT="$parent"
 else
   export AW_CURRENT="$(tmux -L projects display -p -t '=projects:' '#{window_name}' 2>/dev/null)"
 fi

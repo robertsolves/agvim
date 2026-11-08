@@ -497,7 +497,8 @@ case "$cmd" in
     check_name "$1"
     [ "$1" != agvim ] || die "agvim always stays: it's where you update it from"
     [ -f "$store/$1" ] || die "no project called $1"
-    gone="$(folder_of "$2")"
+    gone="${2:A}"
+    grep -qxF -- "$gone" "$store/$1" || gone="$(folder_of "$2")" # a folder that's gone is still named as it was
     grep -vxF -- "$gone" "$store/$1" >"$store/.tmp"
     mv "$store/.tmp" "$store/$1"
     # Its tab goes now, and its saved tabs don't come back either.
@@ -518,6 +519,16 @@ case "$cmd" in
     [ -z "$win" ] || bar kill-window -t "$win" 2>/dev/null
     tmux set-option -t "=$1:" @closing 1 2>/dev/null
     tmux kill-session -t "=$1" 2>/dev/null
+    # Its worktrees stop too and are forgotten (their folders and branches stay, as
+    # they may hold work); a project made later under this name starts without them.
+    if [ -f "$store/.worktrees/$1" ]; then
+      for w in ${(f)"$(cut -f1 "$store/.worktrees/$1")"}; do
+        tmux set-option -t "=$w:" @closing 1 2>/dev/null
+        tmux kill-session -t "=$w" 2>/dev/null
+        rm -rf -- "$store/.tabs/$w"
+      done
+      rm -f -- "$store/.worktrees/$1"
+    fi
     rm -rf -- "$store/$1" "$store/.tabs/$1"
     if bar has-session -t '=projects' 2>/dev/null; then
       write_open

@@ -7,7 +7,8 @@ local autocmd = vim.api.nvim_create_autocmd
 autocmd("FileType", {
   callback = function(args)
     -- Compound filetypes like "yaml.docker-compose" use the first part's parser.
-    local lang = vim.treesitter.language.get_lang(vim.bo[args.buf].filetype:match "^[^.]+")
+    local ft = vim.bo[args.buf].filetype:match "^[^.]+"
+    local lang = ft and vim.treesitter.language.get_lang(ft)
     if lang and pcall(vim.treesitter.start, args.buf, lang) then
       vim.wo[0][0].foldexpr = "v:lua.vim.treesitter.foldexpr()"
       vim.wo[0][0].foldmethod = "expr"
