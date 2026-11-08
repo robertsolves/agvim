@@ -59,3 +59,17 @@ require "configs.session"
 require "configs.refresh"
 -- The tabs' colours follow the theme.
 require "configs.tab_colours"
+
+-- Logs (lsp.log, mason.log...) grow for as long as you use Neovim: one over 5 MB is
+-- emptied a few seconds after starting, so they never fill the disk.
+vim.defer_fn(function()
+  for _, file in ipairs(vim.fn.glob(vim.fn.stdpath "log" .. "/*.log", false, true)) do
+    local stat = vim.uv.fs_stat(file)
+    if stat and stat.size > 5 * 1024 * 1024 then
+      local f = io.open(file, "w")
+      if f then
+        f:close()
+      end
+    end
+  end
+end, 5000)

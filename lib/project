@@ -144,7 +144,7 @@ save() {
   umask 077
   local dir="$store/.tabs/$1"
   mkdir -p "$dir"
-  rm -f "$dir"/*.vim(N)
+  rm -f "$dir"/*.vim(N) "$dir"/*.txt(N) # all made again below; closed tabs' would pile up
   local idx win act layout folder pane where tty id named ftab colour prog
   print -r -- "$rows" | while IFS=$'\t' read -r idx win act layout folder pane where tty id named ftab colour; do
     prog="$(program_on "$tty")" && {

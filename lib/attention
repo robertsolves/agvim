@@ -62,50 +62,107 @@ sync_bar() {
   done
 }
 
-# Every agent tab's dot without the agent's help: an agent whose screen keeps
-# changing (its spinner, its output) for two seconds is working, one that stopped
-# after working is done. Claude's hooks say more (waiting) and win; a tab back at its
-# shell has nothing. An agent is a program named in agents.tsv on the tab's terminal,
-# also when it runs under node or python. Neovim's tabs are left to the hooks: an
-# agent in Neovim runs on a terminal of its own. Typing into an agent you're looking
-# at isn't its work.
+# What runs in the foreground of terminal $1: agent (a program named in agents.tsv,
+# also under node or python), ui (one that waits for you, like Neovim), busy
+# (anything else: a build, tests, a server), or nothing at its shell. Shells and
+# their "zsh -c" wrappers don't count. One terminal's `ps -t` is cheap; all of
+# them at once (ps -ax) costs a tenth of a second of CPU.
+fg_kind() {
+  ps -t "${1#/dev/}" -o stat=,args= 2>/dev/null | awk -v names=" ${agents[*]} " -v uis=" nvim vim vi lazygit less more man htop top btop tig fzf " '
+    $1 ~ /\+/ {
+      n = $2; sub(/.*\//, "", n); sub(/^-/, "", n)
+      if (n ~ /^(zsh|bash|fish|sh|dash|ksh)$/) next
+      if (n ~ /^(node|bun|deno|python[0-9.]*)$/ && NF >= 3) { m = $3; sub(/.*\//, "", m); sub(/\.js$/, "", m); if (index(names, " " m " ")) n = m }
+      r = index(names, " " n " ") ? 3 : (index(uis, " " n " ") ? 2 : 1)
+      if (r > k) k = r
+    }
+    END { print (k == 3 ? "agent" : (k == 2 ? "ui" : (k == 1 ? "busy" : ""))) }'
+}
+
+# Every tab's dot, every second, without anyone's help:
+#   - an agent whose screen keeps changing (its spinner, its output) for two seconds
+#     is working; one that stopped after working is done
+#   - any other program running at a shell (a build, tests) is working from its
+#     first second; when it ends, the tab is done
+#   - back at the shell after an agent, it has nothing
+# Done is blue until you look at the tab, unless you were looking already. Claude's
+# hooks say more (waiting) and are kept. Neovim's tabs are left to the hooks: an
+# agent in Neovim runs on a terminal of its own.
 typeset -A busy_since
+typeset -A kind_of sig_of looked_at
 watch_tick() {
-  local now="$EPOCHSECONDS" changed="" win state at tty act kind typed procs
-  procs="$(ps -axo tty=,args=)"
-  typed="$(tmux list-clients -F '#{window_id} #{client_activity}')"
-  # "-" for no state: read joins empty fields between tabs.
-  tmux list-windows -a -F '#{window_id}	#{?#{@agent-state},#{@agent-state},-}	#{?#{@agent-at},#{@agent-at},0}	#{pane_tty}	#{window_activity}' |
-    while IFS=$'\t' read -r win state at tty act; do
-      [ "$state" != - ] || state=""
-      kind="$(print -r -- "$procs" | awk -v t="${tty#/dev/}" -v names=" ${agents[*]} " '
-        $1 == t { for (i = 2; i <= NF; i++) { n = $i; sub(/.*\//, "", n)
-          if (n == "nvim") { print "nvim"; exit } if (index(names, " " n " ")) a = 1 } }
-        END { if (a) print "agent" }' | head -1)"
-      case "$kind" in
-        nvim) continue ;;
-        "")
-          [ -n "$state" ] || continue
+  local now="$EPOCHSECONDS" changed="" win state at tty act was cmd kind shown line f
+  # Few processes a second: the window shown in a focused window of the bar, and
+  # every tab with its clients, each in one tmux call.
+  local bar_rows rows
+  bar_rows=("${(@f)$(bar display -p -t '=projects:' '#{pane_tty}' \; list-clients -F '#{client_flags}' 2>/dev/null)}")
+  flags="${(j: :)bar_rows[2,-1]}" # also for the loop in watch: how often to look
+  # "-" for no value: read joins empty fields between tabs.
+  rows="$(tmux list-clients -F 'C	#{client_tty}	#{window_id}' \; list-windows -a -F 'W	#{window_id}	#{?#{@agent-state},#{@agent-state},-}	#{?#{@agent-at},#{@agent-at},0}	#{?#{@agent-kind},#{@agent-kind},-}	#{pane_tty}	#{window_activity}	#{pane_current_command}' 2>/dev/null)"
+  shown=""
+  if [[ "$flags" == *focused* ]]; then
+    for line in ${(f)rows}; do
+      [[ "$line" == "C	$bar_rows[1]	"* ]] && { shown="${line##*	}"; break; }
+    done
+  fi
+  for line in ${(f)rows}; do
+    [[ "$line" == W* ]] || continue
+    f=("${(@ps:\t:)line}") # (not read <<<: zsh writes a file for each)
+    win="$f[2]" state="$f[3]" at="$f[4]" was="$f[5]" tty="$f[6]" act="$f[7]" cmd="$f[8]"
+    # What runs there is looked up again when the program in front changes, and
+    # every ten seconds anyway (an agent behind a "zsh -c" wrapper).
+    if [ "$sig_of[$tty]" != "$cmd" ] || (( now - ${looked_at[$tty]:-0} >= 10 )); then
+      kind_of[$tty]="$(fg_kind "$tty")"
+      sig_of[$tty]="$cmd"
+      looked_at[$tty]="$now"
+    fi
+    kind="$kind_of[$tty]"
+    [ "$state" != - ] || state=""
+    case "$kind" in
+      ui) unset "busy_since[$win]"; continue ;;
+      "")
+        unset "busy_since[$win]"
+        [ -n "$state" ] || continue
+        if [ "$was" = busy ] && [ "$state" = working ] && [ "$win" != "$shown" ]; then
+          put "$win" done
+        elif [ "$was" = busy ] && [ "$state" = done ] && [ "$win" != "$shown" ]; then
+          continue
+        else
           tmux set-option -wu -t "$win" @agent-state
           tmux set-option -wu -t "$win" @attention
-          changed=1
-          continue
-          ;;
-      esac
-      if (( now - act <= 2 )); then
-        print -r -- "$typed" | awk -v w="$win" -v a="$act" '$1 == w && $2 >= a - 1 { f = 1 } END { exit !f }' && continue
-        (( act > at + 2 )) || continue # the redraw that came with being marked
+        fi
+        changed=1
+        continue
+        ;;
+      busy)
         [ -n "$busy_since[$win]" ] || busy_since[$win]="$now"
-        (( now - busy_since[$win] >= 2 )) && [ "$state" != working ] || continue
+        (( now - busy_since[$win] >= 1 )) && [ "$state" != working ] || continue
         put "$win" working
+        tmux set-option -w -t "$win" @agent-kind busy
         changed=1
-      else
-        unset "busy_since[$win]"
-        [ "$state" = working ] || continue
-        put "$win" done
-        changed=1
-      fi
-    done
+        continue
+        ;;
+    esac
+    # An agent.
+    if [ "$was" != agent ]; then
+      # Just started: what it draws first isn't work.
+      tmux set-option -w -t "$win" @agent-kind agent
+      tmux set-option -w -t "$win" @agent-at "$now"
+      at="$now"
+    fi
+    if (( now - act <= 2 )); then
+      (( act > at + 2 )) || continue # the redraw that came with being marked
+      [ -n "$busy_since[$win]" ] || busy_since[$win]="$now"
+      (( now - busy_since[$win] >= 2 )) && [ "$state" != working ] || continue
+      put "$win" working
+      changed=1
+    else
+      unset "busy_since[$win]"
+      [ "$state" = working ] || continue
+      if [ "$win" = "$shown" ]; then tmux set-option -wu -t "$win" @agent-state; else put "$win" done; fi
+      changed=1
+    fi
+  done
   [ -n "$changed" ] || return 0
   sync_bar
   local c
@@ -152,19 +209,20 @@ case "$1" in
     # Claude's hooks say more than a bell does; don't let its bell undo "waiting".
     [ -n "$(tmux show-options -wqv -t "$2" @attention)" ] && exit 0
     # A shell's bell (a completion that found nothing) isn't an agent.
-    [[ "$(tmux display -p -t "$2" '#{pane_current_command}')" == (-|)(zsh|bash|fish|sh) ]] && exit 0
+    # (pane_current_command can't tell: an agent tab runs "zsh -c <agent>".)
+    agents=(${(f)"$(grep -v '^#' "$here/agents.tsv" | cut -f2)"})
+    tty="$(tmux display -p -t "$2" '#{pane_tty}')"
+    [ "$(fg_kind "$tty")" = agent ] || exit 0
     mark "$2" done
     ;;
   sync)
     shown="$(visible)"
     [ -z "$shown" ] || tmux set-option -wu -t "$shown" @attention
-    # Back at its shell: the agent has quit, so it is neither working nor waiting.
-    local win state cmd
-    tmux list-windows -a -F '#{window_id}	#{@agent-state}	#{pane_current_command}' | while IFS=$'\t' read -r win state cmd; do
-      [[ "$state" == (working|waiting) && "$cmd" == (-|)(zsh|bash|fish|sh) ]] || continue
-      tmux set-option -wu -t "$win" @agent-state
-      tmux set-option -wu -t "$win" @attention
-    done
+    # A command that ended is done until you look at its tab (watch_tick).
+    if [ -n "$shown" ] && [ "$(tmux show-options -wqv -t "$shown" @agent-kind)" = busy ] &&
+      [ "$(tmux show-options -wqv -t "$shown" @agent-state)" = done ]; then
+      tmux set-option -wu -t "$shown" @agent-state
+    fi
     # The agent tab you looked at last is where agvim send sends (lib/send).
     for line in ${(f)"$(tmux list-sessions -F '#{session_id}	#{window_id}	#{@agent}	#{pane_current_command}')"}; do
       parts=("${(@s:	:)line}")
@@ -185,8 +243,10 @@ case "$1" in
     fi
     bar set -g @watch "$$"
     agents=(${(f)"$(grep -v '^#' "$here/agents.tsv" | cut -f2)"})
-    while sleep 1 && bar has-session -t '=projects' 2>/dev/null; do
+    # Every second while a window shows the bar; every five when none does.
+    while bar has-session -t '=projects' 2>/dev/null; do
       watch_tick
+      if [ -n "$flags" ]; then sleep 1; else sleep 5; fi
     done
     ;;
 esac
