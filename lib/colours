@@ -80,7 +80,7 @@ case "$1" in
     for server in work bar; do
       for n in {0..15}; do
         hex="${@[$((n + 1))]}"
-        [[ "$hex" == \#[0-9a-fA-F](#c6) ]] || continue
+        [[ "$hex" =~ '^#[0-9a-fA-F]{6}$' ]] || continue
         [ "$(srv $server show-options -gqv "@c$n")" = "$hex" ] && continue
         srv $server set-option -g "@c$n" "$hex"
         changed=1

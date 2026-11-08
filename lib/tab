@@ -28,6 +28,7 @@ close() {
   # (view mode: it swallows every key and click): -b returns at once with 0.
   local name
   name="$(tmux display -p -t "$2" '#{window_name}')" || return 0
+  [ -n "$name" ] || return 0
   # A project's other folder: closing its tab takes the folder out of the project.
   if [ "$(tmux display -p -t "$2" '#{@folder_tab}')" = 1 ]; then
     local project folder

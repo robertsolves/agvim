@@ -32,7 +32,8 @@ if [ -z "$session" ]; then
   [ -n "$TMUX_PANE" ] || die "run it in a project, or say which with -p <name>"
   session="$(tmux display -p -t "$TMUX_PANE" '#{session_id}')"
 else
-  session="$(tmux display -p -t "=$session:" '#{session_id}')" || die "no running project called $session"
+  sid="$(tmux display -p -t "=$session:" '#{session_id}')" && [ -n "$sid" ] || die "no running project called $session"
+  session="$sid"
 fi
 
 # Agent tabs: started as one (@agent), or running something other than a shell,

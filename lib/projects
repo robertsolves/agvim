@@ -126,6 +126,7 @@ case "$1" in
       # project from the bar while it keeps running, so it attaches again. By id:
       # a renamed project is still the same session.
       sid="$(env -u TMUX tmux display -p -t "=$name:" '#{session_id}')"
+      [ -n "$sid" ] || { sleep 1; continue; } # display-message prints nothing, and succeeds, for a missing target
       while env -u TMUX tmux has-session -t "$sid" 2>/dev/null; do
         env -u TMUX tmux attach -t "$sid" || sleep 1 # not a tight loop if it keeps failing
       done
@@ -148,7 +149,7 @@ case "$1" in
     # prompt is -b (returns at once, 0 whatever the answer) and the close
     # itself is quiet.
     name="$(bar display -p -t "$3" '#{window_name}')" || exit 0
-    [ "$name" != agvim ] || exit 0 # it has no x; always stays open
+    [ -n "$name" ] && [ "$name" != agvim ] || exit 0 # it has no x; always stays open
     if [ -f "$store/$name" ]; then
       question="Close ${name//\#/##}? Its tabs stop and come back when you open it. (y/n)"
     else
