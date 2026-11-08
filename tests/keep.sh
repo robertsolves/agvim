@@ -47,8 +47,11 @@ o -f ~/outer.conf new-session -d -s o -x 120 -y 30 "agvim; print EXIT=\$?; sleep
 o capture-pane -p -t o | grep -c 'Back to what.s running' | xargs echo "back to what's running row:"
 o send-keys -t o -l 'Keep terminals'; sleep .4; o send-keys -t o Enter; sleep 1
 o capture-pane -p -t o | grep -c 'Keep terminals running after closing  \[off\]' | xargs echo "shows off, still in the menu:"
-o capture-pane -p -t o | grep '^>' | cut -c1-40 | xargs echo "cursor on:"
 echo "setting off: $([ -f ~/.config/agvim/keep-running-off ] && echo 1 || echo 0)"
+# Back on the same row: Enter alone flips it again (fzf's pointer looks like its gutter,
+# so the screen can't show which row it's on). Then off again for what follows.
+o send-keys -t o Enter; sleep 1; echo "cursor on: $([ -f ~/.config/agvim/keep-running-off ] && echo other row || echo "> Keep terminals")"
+o send-keys -t o Enter; sleep 1
 o send-keys -t o Escape; sleep .5; o kill-server; sleep .3
 
 echo "--- keep running off: closing stops AgVim's sessions, not yours"

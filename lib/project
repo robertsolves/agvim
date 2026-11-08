@@ -54,10 +54,11 @@ die() {
   exit 1
 }
 
-# Absolute folder; a file stands for the folder it's in.
+# Absolute folder; a file stands for the folder it's in. A path that's gone stays as
+# it is, so a moved folder can still be taken out of a project.
 folder_of() {
   local dir="${1:A}"
-  [ -d "$dir" ] || dir="${dir:h}"
+  [ ! -e "$dir" ] || [ -d "$dir" ] || dir="${dir:h}"
   print -r -- "$dir"
 }
 
@@ -303,6 +304,7 @@ refresh() {
   tabs_catch_up
   local state="${XDG_STATE_HOME:-$HOME/.local/state}/nvim"
   mkdir -p "$state"
+  find "$state" -name 'agvim-refresh-*.vim' -mtime +1 -delete 2>/dev/null # earlier refreshes
   local tty id file count=0
   tmux list-panes -a -F '#{pane_tty}	#{pane_id}' 2>/dev/null | while IFS=$'\t' read -r tty id; do
     [ "$(program_on "$tty")" = nvim ] || continue
@@ -386,7 +388,7 @@ close() {
 # A console of its own, "Shell N" with the lowest free N, in your home folder.
 new_shell() {
   local n=1
-  while tmux has-session -t "=Shell $n" 2>/dev/null || bar list-windows -t '=projects' -F '#{window_name}' 2>/dev/null | grep -qx "Shell $n"; do
+  while [ -e "$store/Shell $n" ] || tmux has-session -t "=Shell $n" 2>/dev/null || bar list-windows -t '=projects' -F '#{window_name}' 2>/dev/null | grep -qx "Shell $n"; do
     n=$((n + 1))
   done
   tmux new-session -d -s "Shell $n" -n "shell 1" -c "$HOME"
@@ -457,18 +459,20 @@ ask() {
 
 finder_new() {
   local name dir
-  name="$(ask 'return text returned of (display dialog "New project name:" default answer (item 1 of argv) with title "New AgVim Project")' "${1:A:t}")" || return 0
+  name="$(ask 'return text returned of (display dialog "New project name:" default answer (item 1 of argv) with title "New AgVim Project")' "${$(folder_of "$1"):t}")" || return 0
   name="$(clean "$name")"
   if [ -z "$name" ] || { [ -f "$store/$name" ] && ! grep -qxF -- "$(folder_of "$1")" "$store/$name"; }; then
     ask 'display alert "Could not create that project" message (item 1 of argv)' "A project called \"$name\" exists already, or the name is empty. Use Add to AgVim Project, or pick another name." >/dev/null
     return 0
   fi
   window=(--window)
-  new "$1" "$name"
+  # One window for all of them, once they are in.
+  AW_NO_OPEN=1 new "$1" "$name"
   shift
   for dir in "$@"; do
-    add "$name" "$dir"
+    AW_NO_OPEN=1 add "$name" "$dir"
   done
+  show "$name"
 }
 
 finder_add() {
@@ -482,8 +486,9 @@ finder_add() {
   return item 1 of chosen' "${names[@]}")" || return 0
   window=(--window)
   for dir in "$@"; do
-    add "$name" "$dir"
+    AW_NO_OPEN=1 add "$name" "$dir"
   done
+  show "$name"
 }
 
 window=()

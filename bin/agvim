@@ -209,7 +209,7 @@ ai_use() {
     if [ -t 0 ]; then
       listed="$(ai_models "$(ai_get "url_$id" | grep . || print -r -- "$url")" "$key")"
       if [ -n "$listed" ]; then
-        answer="$(print -r -- "$listed" | fzf --height=~20 --reverse --no-info --query="$ai_model" --prompt="model> ")" || return 0
+        answer="$(print -r -- "$listed" | fzf --height=~20 --reverse --no-info --query="$ai_model" --prompt="model> ")" || exit 0
         ai_model="$answer"
       else
         print -rn -- "Model [$ai_model]: "
@@ -377,7 +377,7 @@ case "$cmd" in
     ;;
   remove)
     parse "$@"
-    folder="$(folder_arg "$args[1]")" || exit 1
+    folder="${args[1]:-.}" # it may have been moved or deleted: that's why it's being removed
     target="$(which_project)" || exit 1
     exec "$lib/project" remove "$target" "$folder"
     ;;
@@ -385,10 +385,9 @@ case "$cmd" in
     parse "$@"
     if [ -n "$project" ]; then
       target="$project"
-    elif [ -n "$args[1]" ]; then
-      target="$(which_project)" || exit 1
     else
-      target="$(pick_project "rename")" || exit 0
+      # The project you're in, else ask which.
+      target="$(current)" || target="$(pick_project "rename")" || exit 0
     fi
     new_name="$args[1]"
     if [ -z "$new_name" ]; then
@@ -489,7 +488,7 @@ case "$cmd" in
       list)
         print -r -- "Now: $(ai_name)"
         grep -v '^#' "$lib/ai-providers.tsv" | while IFS=$'\t' read -r id label kind url model; do
-          if [ "$kind" = copilot ] || [ -n "$(ai_get "key_$id")" ]; then state=ready; else state="needs key"; fi
+          if [ "$kind" = copilot ] || [ "$id" = freechain ] || [ -n "$(ai_get "key_$id")" ]; then state=ready; else state="needs key"; fi
           printf '%-11s %-10s %s\n' "$id" "$state" "$label"
         done
         ;;
@@ -499,8 +498,8 @@ case "$cmd" in
         ai_apply
         ;;
       *)
-        ai_use "$args[1]"
-        ai_apply
+        # Open Neovims restart only when the source really changed.
+        ai_use "$args[1]" && ai_apply
         ;;
     esac
     ;;
@@ -554,6 +553,8 @@ case "$cmd" in
     # Saved projects are gitignored, so an update leaves them alone. Neovim rewrites its
     # plugin lockfile as it runs; the repo's copy decides the versions. The newest release,
     # or main while there are none.
+    [ "$(git -C "$repo" rev-parse --abbrev-ref HEAD 2>/dev/null)" = main ] ||
+      die "$repo isn't on the main branch: update it yourself (git merge), then run agvim update again"
     git -C "$repo" checkout -- nvim/lazy-lock.json 2>/dev/null
     git -C "$repo" fetch -q origin --tags 2>/dev/null
     latest="$(git -C "$repo" tag -l 'v*.*.*' --sort=-v:refname | head -1)"
