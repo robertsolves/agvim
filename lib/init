@@ -111,7 +111,12 @@ else
   print -r -- "$dir has AGENTS.md, CLAUDE.md and GEMINI.md already. Nothing changed."
 fi
 if [ -n "$ask" ]; then
-  "$lib/send" "Read this repo and fill in AGENTS.md: what it is, the real build, test and lint commands (check they run), and the rules someone new would need. Keep it short. Don't change any other file." \
+  # The agent of the project with this folder, when it's running; told which folder
+  # either way, as it may work in another.
+  owner="$(grep -lxF -- "${dir:A}" "${lib:h}"/saved-projects/*(N.) 2>/dev/null | head -1)"
+  to=()
+  [ -n "$owner" ] && tmux has-session -t "=${owner:t}" 2>/dev/null && to=(-p "${owner:t}")
+  "$lib/send" "${to[@]}" "Read the repo in ${dir:A} and fill in its AGENTS.md: what it is, the real build, test and lint commands (check they run), and the rules someone new would need. Keep it short. Don't change any other file." \
     && print -r -- "Asked your agent to fill it in: press Enter in its tab."
 fi
 exit 0

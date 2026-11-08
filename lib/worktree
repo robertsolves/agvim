@@ -163,8 +163,10 @@ new() {
   [ -n "$repo" ] || die "$p isn't a git repo"
   # A worktree's own folder: branch off from what it has, but the repo is the main one.
   local common main
-  common="$(git -C "$repo" rev-parse --path-format=absolute --git-common-dir)"
-  main="${common:h}"
+  # The main working tree: the first "worktree" git lists (a submodule's git dir
+  # isn't <repo>/.git, so it's not the common dir's folder).
+  main="$(git -C "$repo" worktree list --porcelain | sed -n '1s/^worktree //p')"
+  [ -n "$main" ] || die "$repo has no working tree of its own"
   local from
   from="$(git -C "$repo" symbolic-ref --short -q HEAD || git -C "$repo" rev-parse --short HEAD)"
   local existing=""
@@ -175,12 +177,16 @@ new() {
     free="$(git -C "$main" for-each-ref --format='%(refname:short)' refs/heads | while IFS= read -r b; do
       git -C "$main" worktree list --porcelain | grep -qxF "branch refs/heads/$b" || print -r -- "$b"
     done)"
-    print -r -- "New worktree in $p, from $from. Type a name for a new branch, or pick one:"
-    pick="$(print -r -- "$free" | fzf --print-query --height=~15 --reverse --no-info --prompt="name> ")"
+    print -r -- "New worktree in $p, from $from."
+    # Enter makes a branch of what you typed (with nothing typed, takes the highlighted
+    # one); Tab takes the highlighted branch. Enter alone would pick a branch that
+    # only looks like the name typed.
+    pick="$(print -r -- "$free" | fzf --print-query --expect=tab --height=~15 --reverse --no-info --prompt="name> " \
+      --header="Enter: a new branch with this name · Tab: the highlighted branch")"
     [ $? -eq 130 ] && return 3 # Esc: nothing made
-    local query="${pick%%$'\n'*}" chosen="${pick#*$'\n'}"
-    [ "$chosen" = "$pick" ] && chosen=""
-    if [ -n "$chosen" ]; then
+    local lines=("${(@f)pick}")
+    local query="$lines[1]" key="$lines[2]" chosen="$lines[3]"
+    if [ -n "$chosen" ] && { [ "$key" = tab ] || [ -z "$query" ] || [ "$query" = "$chosen" ]; }; then
       name="$chosen"; existing=1
     else
       name="${query:-wt-$(date +%m%d-%H%M)}"
@@ -201,11 +207,19 @@ $installed}" | fzf --height=~15 --reverse --no-info --prompt="agent to start> ")
   local key s dir
   key="$(clean "$name")"
   s="$p-wt-$key"
-  dir="$home/$(clean "${main:t}")/$key"
   local taken
   taken="$(field "$(row_of "$p" "$s")" 2)"
   [ -z "$taken" ] || [ "$taken" = "$name" ] || die "a worktree called $key exists already (branch $taken)"
-  tmux has-session -t "=$s" 2>/dev/null && { show "$p" "$s"; return; }
+  # Made already (stopped when its project closed): start it again.
+  if [ -n "$taken" ]; then
+    start_session "$p" "$s" || die "$s is listed but its folder is gone: close it from the worktree row"
+    show "$p" "$s"
+    return
+  fi
+  # Another repo with the same folder name may have this one: the next free folder.
+  local top="$home/$(clean "${main:t}")" n=2
+  dir="$top/$key"
+  while [ -e "$dir" ]; do dir="$top-$n/$key"; n=$((n + 1)); done
   mkdir -p "${dir:h}"
   if [ -n "$existing" ]; then
     git -C "$main" worktree add -q "$dir" "$name" || die "git couldn't make the worktree"
@@ -283,7 +297,6 @@ close() {
   # Back to main first if it's what's shown, then stop it and take it away.
   [ "$(shown_in "$p")" = "$s" ] && show "$p" "$p"
   tmux set-option -t "=$s:" @closing 1 2>/dev/null
-  tmux kill-session -t "=$s" 2>/dev/null
   rm -rf -- "$store/.tabs/$s"
   git -C "$main" worktree remove --force "$dir" 2>/dev/null || { rm -rf -- "$dir"; git -C "$main" worktree prune; }
   if [ -z "$keep" ]; then
@@ -294,6 +307,8 @@ close() {
   [ -s "$(list_file "$p")" ] || rm -f "$(list_file "$p")"
   render "$p"
   print -r -- "Closed $branch${keep:+ (the branch is kept)}."
+  # Last: run from a tab of that worktree, this script ends with it.
+  tmux kill-session -t "=$s" 2>/dev/null
 }
 
 merge() {

@@ -13,6 +13,7 @@ die() { print -r -- "agvim: $1" >&2; exit 1; }
 target="" session=""
 while [ $# -gt 0 ]; do
   case "$1" in
+    -t | -p) [ $# -ge 2 ] || die "$1 needs a value" ;|
     -t) target="$2"; shift 2 ;;
     -p) session="$2"; shift 2 ;;
     --) shift; break ;;
