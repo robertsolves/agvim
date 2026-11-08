@@ -34,11 +34,21 @@ unset TMUX # it may be the bar's; every tmux below is yours
 bar() { command tmux -L projects "$@"; }
 
 nvim_sessions="${XDG_STATE_HOME:-$HOME/.local/state}/nvim/agvim-sessions"
+# Neovim's session files for this tmux server (configs/session.lua): pane ids start
+# at %0 on every server, so another one's mustn't come back as yours.
+nvim_sessions_here() {
+  local s="$(tmux display -p '#{socket_path},#{pid}' 2>/dev/null)"
+  print -r -- "$nvim_sessions/${${s%,*}//[^a-zA-Z0-9]/_}-${s##*,}"
+}
 
 # What brings a saved tab's program back. Anything else comes back as a shell.
 # An agent starts with its flags (agents.tsv), and continues with them too.
 typeset -A resume=(nvim 'nvim .' lazygit lazygit)
 typeset -A launch
+# Agents that can go back to one conversation by its id, as they say in their help
+# (claude --help, freebuff --help): a tab saved with its id comes back as that one.
+# Another tab of the same agent can't then continue "the last one" in the folder too.
+typeset -A by_id=(claude --resume freebuff --continue)
 # What a tab runs after an agent or a command of yours ends: a shell, so its output
 # stays and you can go on there. No longer an agent's tab (agvim send, the dots).
 # Neovim and lazygit tabs close instead; a project brings them back.
@@ -51,6 +61,7 @@ while IFS=$'\t' read -r key agent again where flags; do
   [ "$again" = - ] && again="$agent"
   resume[$agent]="$again${flags:+ $flags}"
   launch[$agent]="$agent${flags:+ $flags}"
+  [ -z "$by_id[$agent]" ] || by_id[$agent]="$agent $by_id[$agent] %s${flags:+ $flags}"
 done <"${0:A:h}/agents.tsv"
 
 die() {
@@ -139,6 +150,21 @@ program_on() {
   return 1
 }
 
+# The conversation agent $1 has open on terminal $2, if it can say; $3 is what its hooks
+# told the pane (lib/attention session). Freebuff keeps its chat's log open.
+session_of() {
+  [ -n "$by_id[$1]" ] || return 0
+  case "$1" in
+    claude) [ "$3" = - ] || print -r -- "$3" ;;
+    freebuff)
+      local p
+      for p in $(ps -o pid= -t "${2#/dev/}" 2>/dev/null); do
+        lsof -p "$p" -Fn 2>/dev/null | sed -n 's#^n.*/chats/\([^/]*\)/log\.jsonl$#\1#p'
+      done | head -1
+      ;;
+  esac
+}
+
 # Saves the tabs of running project $1; $2 = closing: close's own save, which other
 # saves must not undo. One save of a project at a time: an autosave halfway through
 # when close saves would delete what close wrote.
@@ -157,19 +183,22 @@ save_now() {
   [ "$(tmux show-options -qv -t "=$1:" @restoring 2>/dev/null)" != 1 ] || return 0
   [ "$2" = closing ] || [ "$(tmux show-options -qv -t "=$1:" @closing 2>/dev/null)" != 1 ] || return 0
   local rows
-  rows="$(tmux list-panes -s -t "=$1" -F '#{window_index}	#{?#{window_name},#{window_name},shell}	#{window_active}	#{window_layout}	#{?#{@folder},#{@folder},-}	#{pane_index}	#{?#{pane_current_path},#{pane_current_path},-}	#{pane_tty}	#{pane_id}	#{?#{@named},1,-}	#{?#{@folder_tab},1,-}	#{?#{@colour},#{@colour},-}' 2>/dev/null)"
+  rows="$(tmux list-panes -s -t "=$1" -F '#{window_index}	#{?#{window_name},#{window_name},shell}	#{window_active}	#{window_layout}	#{?#{@folder},#{@folder},-}	#{pane_index}	#{?#{pane_current_path},#{pane_current_path},-}	#{pane_tty}	#{pane_id}	#{?#{@named},1,-}	#{?#{@folder_tab},1,-}	#{?#{@colour},#{@colour},-}	#{?#{@agent-session},#{@agent-session},-}' 2>/dev/null)"
   [ -n "$rows" ] || return 0
   umask 077
   local dir="$store/.tabs/$1"
   mkdir -p "$dir"
   rm -f "$dir"/*.vim(N) "$dir"/*.txt(N) # all made again below; closed tabs' would pile up
-  local idx win act layout folder pane where tty id named ftab colour prog
-  print -r -- "$rows" | while IFS=$'\t' read -r idx win act layout folder pane where tty id named ftab colour; do
+  local sessions="$(nvim_sessions_here)"
+  local idx win act layout folder pane where tty id named ftab colour told prog sid
+  print -r -- "$rows" | while IFS=$'\t' read -r idx win act layout folder pane where tty id named ftab colour told; do
+    sid=-
     prog="$(program_on "$tty")" && {
+      sid="$(session_of "$prog" "$tty" "${told:--}")"
       # Neovim keeps its open files, splits and cursors in a session file for its
       # pane (configs/session.lua); it comes back with them.
-      [ "$prog" != nvim ] || [ ! -s "$nvim_sessions/${id#%}.vim" ] ||
-        cp "$nvim_sessions/${id#%}.vim" "$dir/$idx.$pane.vim"
+      [ "$prog" != nvim ] || [ ! -s "$sessions/${id#%}.vim" ] ||
+        cp "$sessions/${id#%}.vim" "$dir/$idx.$pane.vim"
     } || {
       prog=-
       # Up to 2000 lines, without the blank ones at the end.
@@ -177,7 +206,7 @@ save_now() {
     }
     # No field may be empty: IFS=$'\t' read joins two tabs in a row, and every
     # field after an empty one would move one column left.
-    print -r -- "$idx	${win:-shell}	${act:-0}	${layout:--}	${folder:--}	${pane:-1}	${where:--}	${prog:--}	${named:--}	${ftab:--}	${colour:--}"
+    print -r -- "$idx	${win:-shell}	${act:-0}	${layout:--}	${folder:--}	${pane:-1}	${where:--}	${prog:--}	${named:--}	${ftab:--}	${colour:--}	${sid:--}"
   done >"$dir/tabs.tmp"
   mv "$dir/tabs.tmp" "$dir/tabs"
 }
@@ -189,10 +218,16 @@ restore() {
   local name="$1"
   shift
   local dir="$store/.tabs/$name" first="${1:-$HOME}" active="" prev="" win_id=""
-  local idx win act layout folder pane where prog named ftab colour
+  local idx win act layout folder pane where prog named ftab colour sid
   local cmd=()
   typeset -A layouts
-  while IFS=$'\t' read -r idx win act layout folder pane where prog named ftab colour; do
+  # "Continue the last conversation" for one tab of an agent at most, and none when
+  # another of its tabs goes back to its own: it could be that same one.
+  typeset -A taken
+  for prog sid in $(awk -F'\t' '{ print $8, ($12 == "" ? "-" : $12) }' "$dir/tabs" 2>/dev/null); do
+    [ "$sid" = - ] || taken[$prog]=1
+  done
+  while IFS=$'\t' read -r idx win act layout folder pane where prog named ftab colour sid; do
     [ "$where" != - ] && [ -d "$where" ] || where="$first"
     # Quit before it was saved, it's still the Neovim or lazygit tab.
     [ "$win" = lazygit ] && [ "$pane" = 1 ] && prog=lazygit
@@ -200,9 +235,18 @@ restore() {
     cmd=()
     if [ "$prog" = nvim ] && [ -s "$dir/$idx.$pane.vim" ]; then
       cmd=("nvim -S ${(q)dir}/$idx.$pane.vim; true")
+    elif [[ "$prog" == (nvim|lazygit) ]]; then
+      cmd=("$resume[$prog]; true")
     elif [ "$prog" != - ] && [ -n "$resume[$prog]" ]; then
       # An agent that's no longer in agents.tsv has no entry, and comes back as a shell.
-      if [[ "$prog" == (nvim|lazygit) ]]; then cmd=("$resume[$prog]; true"); else cmd=("$resume[$prog]$then_shell"); fi
+      if [ -n "$by_id[$prog]" ] && [[ "$sid" == [A-Za-z0-9]* && "$sid" != *[^A-Za-z0-9._:-]* ]]; then
+        cmd=("${by_id[$prog]/\%s/$sid}$then_shell")
+      elif [ -n "$taken[$prog]" ]; then
+        cmd=("$launch[$prog]$then_shell") # a new conversation, not a copy of another tab's
+      else
+        cmd=("$resume[$prog]$then_shell")
+        taken[$prog]=1
+      fi
     elif [ -s "$dir/$idx.$pane.txt" ]; then
       cmd=("cat ${(q)dir}/$idx.$pane.txt; exec ${(q)${SHELL:-/bin/zsh}}")
     fi

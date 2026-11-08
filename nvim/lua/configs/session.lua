@@ -2,11 +2,15 @@
 -- tmux pane, so a project that's closed or lost in a crash reopens Neovim as it
 -- was (lib/project save copies the file, restore opens it with nvim -S).
 local pane = vim.env.TMUX_PANE
-if not pane or vim.g.diff_only then
+-- Every tmux server numbers its panes from %0, so the file is also kept per server
+-- (its socket and pid, as lib/project finds it): a test's Neovim, or one left from a
+-- server that's gone, can't write over yours.
+local socket, pid = (vim.env.TMUX or ""):match "^(.-),(%d+),"
+if not pane or not socket or vim.g.diff_only then
   return
 end
 
-local dir = vim.fn.stdpath "state" .. "/agvim-sessions"
+local dir = vim.fn.stdpath "state" .. "/agvim-sessions/" .. socket:gsub("[^%w]", "_") .. "-" .. pid
 local file = dir .. "/" .. pane:gsub("%%", "") .. ".vim"
 
 local function write()

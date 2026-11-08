@@ -1,8 +1,10 @@
 #!/bin/zsh
-repo="${0:A:h:h}"
+src="${0:A:h:h}"
 base=$(mktemp -d /tmp/awf.XXXX); base=${base:A}
 export HOME=$base/h TMUX_TMPDIR=$base/t SHELL=/bin/zsh; mkdir -p $HOME/.local/bin $TMUX_TMPDIR; unset TMUX; touch ~/.zshrc
-export AGVIM_REAL_TMUX="$(command -v tmux)"; mkdir -p $HOME/stubs; cp "${0:A:h:h}/tests/tmux-guard" $HOME/stubs/tmux; export PATH="$HOME/stubs:$PATH" # only this test's own servers, also if its folder goes
+export AGVIM_REAL_TMUX="$(command -v tmux)"; mkdir -p $HOME/stubs; cp "$src/tests/tmux-guard" $HOME/stubs/tmux; export PATH="$HOME/stubs:$PATH" # only this test's own servers, also if its folder goes
+# A copy: tmux's hooks save tabs into the clone's saved-projects, not yours.
+repo=$HOME/clone; mkdir -p $repo; (cd $src && git ls-files -co --exclude-standard -z | while IFS= read -r -d '' f; do [ -e "$f" ] && { mkdir -p "$repo/${f:h}"; cp -pR "$f" "$repo/$f"; }; done); git -C $repo init -q
 ln -s $repo/bin/agvim ~/.local/bin/agvim; ln -s $repo/tmux/tmux.conf ~/.tmux.conf
 print 'set -g default-terminal xterm-256color' > ~/outer.conf
 tmux -f ~/.tmux.conf new-session -d -s P -n nvim -x 80 -y 20 -c $HOME 'sleep 300'

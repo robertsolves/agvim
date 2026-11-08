@@ -9,7 +9,10 @@ repo=$HOME/clone; mkdir -p $repo; (cd $src && git ls-files -co --exclude-standar
 ln -s $repo/bin/agvim ~/.local/bin/agvim; ln -s $repo/tmux/tmux.conf ~/.tmux.conf
 for p in nvim lazygit; do print -l '#!/bin/zsh' '[[ "$*" == *--headless* ]] && exit 0' "exec -a $p sleep 1000" > ~/stubs/$p; chmod +x ~/stubs/$p; done
 # An agent that shows what's typed into it, line by line, in a file.
-print -l '#!/bin/zsh' 'while IFS= read -r l; do print -r -- "$l" >> ~/claude-got; done' > ~/stubs/claude; chmod +x ~/stubs/claude
+# Named claude in ps, as the real one is, so AgVim sees it as Claude.
+print -l '#!/bin/zsh' 'print -r -- "claude $*" >> ~/agent-args' "exec -a claude zsh -c 'while IFS= read -r l; do print -r -- \"\$l\" >> ~/claude-got; done'" > ~/stubs/claude; chmod +x ~/stubs/claude
+# Freebuff keeps its chat's log open, so the stub does too.
+print -l '#!/bin/zsh' 'print -r -- "freebuff $*" >> ~/agent-args' 'mkdir -p ~/fb/chats/${2:-fb-new}; exec 3>>~/fb/chats/${2:-fb-new}/log.jsonl; exec -a freebuff sleep 1000' > ~/stubs/freebuff; chmod +x ~/stubs/freebuff
 print -l '#!/bin/zsh' 'exit 0' > ~/stubs/osascript; chmod +x ~/stubs/osascript
 [ -n "$AGVIM_TEST_TMUX" ] && cp "$AGVIM_TEST_TMUX" ~/stubs/tmux
 export PATH="$HOME/stubs:$HOME/.local/bin:$PATH"
@@ -73,4 +76,15 @@ mkdir -p ~/.config/agvim; print -l "mine	$lib" > ~/.config/agvim/library
 agvim skills add hi -C ~/code/a; agvim skills list -C ~/code/a
 echo "only that one: $(ls ~/code/a/.agents/*(N) ~/code/a/.agents/*/*(N) 2>/dev/null | grep -c tidy)"
 agvim skills remove hi -C ~/code/a; echo "after remove: $(agvim skills list -C ~/code/a | wc -l | tr -d ' ')"
+
+echo "--- each agent tab comes back as its own conversation"
+mkdir -p ~/code/res; agvim new ~/code/res -n R --no-open; $repo/lib/project start R >/dev/null 2>&1; upto 40 "tmux has-session -t '=R' 2>/dev/null"
+for t in one two; do tmux new-window -d -t '=R:' -n $t 'claude; exec zsh'; done; tmux new-window -d -t '=R:' -n fb 'freebuff --continue fb-old; exec zsh'; sleep 1
+for t in one two; do printf '{"session_id":"sess-%s","prompt":"a, {b}"}' $t | TMUX_PANE=$(tmux display -p -t "=R:=$t" '#{pane_id}') agvim _attention clear; done
+back() { : > ~/agent-args; $repo/lib/project start R >/dev/null 2>&1; upto 40 "grep -q freebuff ~/agent-args"; sleep 1; sed -E 's/ --settings [^ ]*//' ~/agent-args | LC_ALL=C sort | tr '\n' ','; echo; }
+$repo/lib/project close R </dev/null >/dev/null 2>&1
+echo "R saved: $(awk -F'\t' '$8 != "-" && $8 != "nvim" && $8 != "lazygit" { printf "%s=%s ", $2, $12 }' $repo/saved-projects/.tabs/R/tabs)"
+echo "R back: $(back)"
+$repo/lib/project close R </dev/null >/dev/null 2>&1; f=$repo/saved-projects/.tabs/R/tabs; cut -f1-11 $f > $f.n && mv $f.n $f # saved before AgVim kept ids
+echo "R without ids: $(back)"
 o kill-server 2>/dev/null; b kill-server 2>/dev/null; tmux kill-server 2>/dev/null

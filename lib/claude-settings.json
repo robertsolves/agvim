@@ -1,5 +1,8 @@
 {
   "hooks": {
+    "SessionStart": [
+      { "hooks": [{ "type": "command", "command": "~/.local/bin/agvim _attention session" }] }
+    ],
     "Notification": [
       { "hooks": [{ "type": "command", "command": "~/.local/bin/agvim _attention set waiting" }] }
     ],

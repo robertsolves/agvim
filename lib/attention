@@ -7,6 +7,8 @@
 #                                  one you're looking at; a notification too when
 #                                  AgVim's window isn't in front
 #   attention clear                the agent is working again (Claude's prompt hook)
+#   attention session              Claude's session started: which conversation the
+#                                  tab of $TMUX_PANE has, so it comes back as that one
 #   attention bell <window id>     tmux's alert-bell hook
 #   attention sync                 after you switch tabs or projects: clears what's
 #                                  shown, and updates the bar's dots
@@ -25,6 +27,14 @@ zmodload zsh/datetime
 put() { # window, state
   tmux set-option -w -t "$1" @agent-state "$2"
   tmux set-option -w -t "$1" @agent-at "$EPOCHSECONDS"
+}
+
+# Claude's hooks get JSON with the conversation's session_id on stdin. lib/project
+# saves it with the tab, and resumes that conversation, not just the folder's last.
+remember_session() {
+  [ -n "$TMUX_PANE" ] && [ ! -t 0 ] || return 0
+  local id="$(tr ',{}' '\n\n\n' | sed -n 's/^ *"session_id" *: *"\([A-Za-z0-9-]*\)".*/\1/p' | head -1)"
+  [ -n "$id" ] && tmux set-option -p -t "$TMUX_PANE" @agent-session "$id"
 }
 
 # The window you're looking at in the project tmux, if a window shows the bar.
@@ -214,8 +224,12 @@ case "$1" in
     put "$win" "${2:-done}"
     mark "$win" "$2"
     ;;
+  session)
+    remember_session
+    ;;
   clear)
     [ -n "$TMUX_PANE" ] || exit 0
+    remember_session # also for one that started before AgVim kept these
     put "$TMUX_PANE" working
     tmux set-option -wu -t "$TMUX_PANE" @attention
     sync_bar

@@ -80,8 +80,15 @@ function M.new(name, cmd)
   tmux(args)
 end
 
+-- An empty box: you type the new name, not edit the old one. Empty keeps it.
 function M.rename()
-  tmux { "command-prompt", "-I", "#{window_name}", "-p", "Name:", "rename-window '%%' ; set-option -w @named 1" }
+  local old = vim.trim(vim.fn.system { "tmux", "display-message", "-p", "#{window_name}" })
+  vim.ui.input({ prompt = "Rename " .. old .. ": " }, function(name)
+    if name and name ~= "" then
+      tmux { "rename-window", "--", name }
+      tmux { "set-option", "-w", "@named", "1" }
+    end
+  end)
 end
 
 -- agvim send (lib/send): text into the prompt of the agent tab you used last,

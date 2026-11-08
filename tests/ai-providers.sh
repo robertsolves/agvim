@@ -42,7 +42,7 @@ try() {
   mkdir -p $d; print -l 'def add(a, b):' '    """Return the sum of a and b."""' > $d/demo.py
   : > $base/requests
   print -l "use=$id" "url_$id=http://127.0.0.1:$port$url" "model_$id=test-model" "key_$id=key-$id" > $d/ai
-  tmux -f /dev/null new-session -d -s "$id" -x 110 -y 24 -c $d -e AGVIM_AI_FILE=$d/ai "nvim demo.py; sleep 20"
+  tmux -f /dev/null new-session -d -s "$id" -x 110 -y 24 -c $d -e XDG_STATE_HOME=$base/state -e AGVIM_AI_FILE=$d/ai "nvim demo.py; sleep 20"
   sleep 5
   tmux send-keys -t "$id" -l 'Go'; sleep .5
   for c in r e t u r n ' ' a; do tmux send-keys -t "$id" -l "$c"; sleep .5; done
