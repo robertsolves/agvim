@@ -5,24 +5,59 @@
 # not main, so nobody gets unfinished work, and it never touches a clone with changes of
 # its own, one on another branch, or one that's ahead. Offline, it gives up in seconds.
 # `agvim autoupdate off` turns it off.
+#
+#   auto-update            at launch
+#   auto-update --clone    only make this folder a clone (for agvim update)
 repo="${0:A:h:h}"
 g() { git -C "$repo" "$@"; }
+url="${AGVIM_URL:-https://github.com/robertsolves/agvim.git}"
+
+# The app's first launch copies its files here, and makes them a clone only if GitHub
+# could be reached then (macos/app/first-run): until it can, each launch tries again,
+# and then puts the newest release here, as first-run would have. Sets made=1.
+newest() { g tag -l 'v*.*.*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1; }
+made=""
+clone() {
+  [ ! -d "$repo/.git" ] || return 0
+  g init -q -b main && g remote add origin "$url" &&
+    perl -e 'alarm 10; exec @ARGV' git -C "$repo" fetch -q origin main --tags 2>/dev/null || {
+    rm -rf "$repo/.git"
+    return 1
+  }
+  local to
+  to="$(newest)"
+  g reset -q --hard "${to:-origin/main}" || { rm -rf "$repo/.git"; return 1; }
+  g branch -q -u origin/main 2>/dev/null
+  made=1
+  print -r -- "AgVim is now ${to:-the newest version}, from GitHub."
+}
+# Installs what's here now; Neovim's plugins at the versions it was made with
+# (install.sh does that in its tools step, which this leaves out).
+install() {
+  if ! AGVIM_NO_LAUNCH=1 "$repo/install.sh" --no-brew --no-tools >/dev/null 2>&1; then
+    print -r -- "The update didn't install fully. agvim update tries again."
+  fi
+  perl -e 'alarm 120; exec @ARGV' nvim --headless "+Lazy! restore" +qa >/dev/null 2>&1
+  g checkout -- nvim/lazy-lock.json 2>/dev/null
+}
+if [ "$1" = --clone ]; then clone; exit; fi
 
 [ ! -f ~/.config/agvim/auto-update-off ] || exit 1
-[ -d "$repo/.git" ] || exit 1
+clone || exit 1
+[ -z "$made" ] || { install; exit 0; }
 [ "$(g rev-parse --abbrev-ref HEAD 2>/dev/null)" = main ] || exit 1
 perl -e 'alarm 6; exec @ARGV' git -C "$repo" fetch -q origin --tags 2>/dev/null || exit 1
-latest="$(g tag -l 'v*.*.*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1)"
+latest="$(newest)"
 [ -n "$latest" ] || exit 1
 g merge-base --is-ancestor "$latest" HEAD && exit 1 # has it already
+g merge-base --is-ancestor HEAD "$latest" || exit 1 # commits of its own: can't move on
 # Neovim rewrites its plugin lockfile as it runs; the repo's copy decides the versions,
-# but only once we know we're updating.
-[ -z "$(g status --porcelain -- . ':!nvim/lazy-lock.json')" ] || exit 1
+# but only once we know we're updating. Files git doesn't track don't count: a merge
+# leaves them, or refuses if one is in the way.
+[ -z "$(g status --porcelain -uno -- . ':!nvim/lazy-lock.json')" ] || exit 1
 g checkout -- nvim/lazy-lock.json 2>/dev/null
 print -r -- "Updating AgVim to $latest..."
 g merge -q --ff-only "$latest" 2>/dev/null || { print -r -- "Couldn't update, so opening this version."; exit 1; }
-if ! AGVIM_NO_LAUNCH=1 "$repo/install.sh" --no-brew --no-tools >/dev/null 2>&1; then
-  print -r -- "The update didn't install fully. agvim update tries again."
-fi
+install
 print -r -- "Updated to $latest."
 exit 0

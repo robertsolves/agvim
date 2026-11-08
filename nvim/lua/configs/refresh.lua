@@ -27,7 +27,8 @@ function M.restart(file)
   vim.cmd "silent! wall"
   vim.opt.sessionoptions:remove { "terminal", "blank" }
   vim.cmd("mksession! " .. vim.fn.fnameescape(file))
-  vim.cmd("restart source " .. vim.fn.fnameescape(file))
+  -- "!": :restart would save and restore a session of its own too (:help :restart).
+  vim.cmd("restart! source " .. vim.fn.fnameescape(file))
 end
 
 vim.api.nvim_create_user_command("AgvimRefresh", function(opts)

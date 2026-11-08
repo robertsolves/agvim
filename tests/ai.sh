@@ -4,6 +4,7 @@ src="${0:A:h:h}"
 real_home="$HOME"
 base=$(mktemp -d /tmp/awf.XXXX); base=${base:A}
 export HOME=$base/home TMUX_TMPDIR=$base/t; mkdir -p $HOME/.local/bin $TMUX_TMPDIR; unset TMUX
+export AGVIM_REAL_TMUX="$(command -v tmux)"; mkdir -p $HOME/stubs; cp "$src/tests/tmux-guard" $HOME/stubs/tmux; export PATH="$HOME/stubs:$PATH" # only this test's own servers, also if its folder goes
 ln -s $src/bin/agvim ~/.local/bin/agvim
 a() { print -r -- "\$ agvim $*"; agvim "$@" 2>&1; local rc=$?; [ $rc = 0 ] || print -r -- "  rc=$rc"; }
 export PATH="$HOME/.local/bin:$PATH"

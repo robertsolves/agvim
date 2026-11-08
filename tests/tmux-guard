@@ -1,0 +1,9 @@
+#!/bin/zsh
+# "tmux" for the tests, first on their PATH: it reaches only the test's own servers.
+# With TMUX_TMPDIR's folder gone (cleaned up by something else), tmux would quietly use
+# /tmp's, where the real AgVim runs, and a test's kill-server would end it.
+[ -n "$TMUX_TMPDIR" ] && [ -d "$TMUX_TMPDIR" ] && [[ "${TMUX_TMPDIR:A}" != (/tmp|/private/tmp) ]] && [ -x "$AGVIM_REAL_TMUX" ] || {
+  print -r -- "tests: no scratch TMUX_TMPDIR ($TMUX_TMPDIR), so not running: tmux $*" >&2
+  exit 1
+}
+exec "$AGVIM_REAL_TMUX" "$@"

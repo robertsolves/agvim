@@ -30,7 +30,10 @@ end
 
 -- The port of this Neovim's claudecode.nvim server, from its lock file.
 local function claude_port()
-  for _, lock in ipairs(vim.fn.glob(vim.fn.expand "~/.claude/ide/*.lock", false, true)) do
+  -- Where claudecode.nvim writes it: $CLAUDE_CONFIG_DIR/ide when that's set (its lockfile.lua).
+  local dir = vim.env.CLAUDE_CONFIG_DIR ~= nil and vim.env.CLAUDE_CONFIG_DIR ~= "" and vim.env.CLAUDE_CONFIG_DIR .. "/ide"
+    or "~/.claude/ide"
+  for _, lock in ipairs(vim.fn.glob(vim.fn.expand(dir) .. "/*.lock", false, true)) do
     local ok, data = pcall(vim.json.decode, table.concat(vim.fn.readfile(lock), "\n"))
     if ok and data.pid == vim.fn.getpid() then
       return vim.fn.fnamemodify(lock, ":t:r")
@@ -68,8 +71,9 @@ function M.new(name, cmd)
   if port then
     vim.list_extend(args, { "-e", "CLAUDE_CODE_SSE_PORT=" .. port, "-e", "ENABLE_IDE_INTEGRATION=true" })
   end
-  -- "; true" keeps the tab open as a shell when the agent exits. Closing the
-  -- project saves which agent ran here, to start it again (lib/project).
+  -- "; true" keeps a shell above the agent, like every tab that runs a program (the
+  -- tab closes when it exits). Closing the project saves which agent ran here, to
+  -- start it again (lib/project).
   table.insert(args, cmd .. "; true")
   -- Marked as an agent's tab, for agvim send and the list of agents.
   vim.list_extend(args, { ";", "set-option", "-w", "@agent", name })

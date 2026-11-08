@@ -21,17 +21,14 @@ map("t", "<C-w>", "<C-\\><C-N>", opts)
 -- Exit insert mode using 'jk'.
 map("i", "jk", "<Esc>", opts)
 
--- F13: Enter Normal mode (from any mode).
-map({ "i", "n", "v", "c", "t" }, "<F13>", "<Esc>", opts)
-
--- F14: Enter Insert mode (from any mode).
-map({ "i", "n", "v", "c", "t" }, "<F14>", "<Esc>i", opts)
-
--- F15: Enter Visual mode (from any mode).
-map({ "i", "n", "v", "c", "t" }, "<F15>", "<Esc>v", opts)
-
--- F16: Enter Command mode (from any mode).
-map({ "i", "n", "v", "c", "t" }, "<F16>", '<Esc><Cmd>call feedkeys(":")<CR>', opts)
+-- F13-F16: Normal, Insert, Visual and Command mode, from any mode. Leaving: <Esc>,
+-- but a mapped <Esc> runs a half-typed command (:help c_<Esc>), so <C-c> there,
+-- and a terminal would get the <Esc> itself, so <C-\><C-N> there.
+for key, after in pairs { F13 = "", F14 = "i", F15 = "v", F16 = '<Cmd>call feedkeys(":")<CR>' } do
+  map({ "i", "n", "v" }, "<" .. key .. ">", "<Esc>" .. after, opts)
+  map("c", "<" .. key .. ">", "<C-c>" .. after, opts)
+  map("t", "<" .. key .. ">", "<C-\\><C-N>" .. after, opts)
+end
 
 -- F19: Exit Terminal mode.
 map("t", "<F19>", "exit<CR>", opts)
@@ -54,11 +51,15 @@ map("n", "<Leader>xv", function()
   vim.diagnostic.config { virtual_text = on }
 end, with_desc "Toggle inline diagnostics")
 
+-- The error's message where it jumped to (opts.float goes in Neovim 0.14).
+local function error_float(_, bufnr)
+  vim.diagnostic.open_float { bufnr = bufnr, scope = "cursor" }
+end
 map("n", "]e", function()
-  vim.diagnostic.jump { count = 1, severity = vim.diagnostic.severity.ERROR, float = true }
+  vim.diagnostic.jump { count = 1, severity = vim.diagnostic.severity.ERROR, on_jump = error_float }
 end, with_desc "Next error")
 map("n", "[e", function()
-  vim.diagnostic.jump { count = -1, severity = vim.diagnostic.severity.ERROR, float = true }
+  vim.diagnostic.jump { count = -1, severity = vim.diagnostic.severity.ERROR, on_jump = error_float }
 end, with_desc "Previous error")
 
 --------------------------------------------------------------------------------

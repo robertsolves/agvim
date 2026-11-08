@@ -33,7 +33,7 @@ if [ ! -d "$dir/.git" ]; then
   git -C "$dir" remote add origin "$url"
   if git -C "$dir" fetch -q origin main --tags 2>/dev/null; then
     # The newest release, like auto-update; main only while there are none.
-    latest="$(git -C "$dir" tag -l 'v*.*.*' --sort=-v:refname | head -1)"
+    latest="$(git -C "$dir" tag -l 'v*.*.*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1)"
     git -C "$dir" reset -q --hard "${latest:-origin/main}"
     git -C "$dir" branch -q -u origin/main 2>/dev/null
   else

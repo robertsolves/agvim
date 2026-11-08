@@ -2,6 +2,7 @@
 src="${0:A:h:h}"
 base=$(mktemp -d /tmp/awf.XXXX); base=${base:A}
 export HOME=$base/home TMUX_TMPDIR=$base/t SHELL=/bin/zsh GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@t GIT_COMMITTER_NAME=t GIT_COMMITTER_EMAIL=t@t
+export AGVIM_REAL_TMUX="$(command -v tmux)"; mkdir -p $HOME/stubs; cp "$src/tests/tmux-guard" $HOME/stubs/tmux; export PATH="$HOME/stubs:$PATH" # only this test's own servers, also if its folder goes
 mkdir -p $HOME $TMUX_TMPDIR ~/stubs ~/Work/alpha; unset TMUX; touch ~/.zshrc
 export PATH="$HOME/.local/bin:$HOME/stubs:$PATH"
 print -l '#!/bin/zsh' 'print open "$@" >> $HOME/open.log' > ~/stubs/open; chmod +x ~/stubs/open

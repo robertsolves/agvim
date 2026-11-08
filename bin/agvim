@@ -16,11 +16,12 @@
 #
 # Tabs
 #   agvim tab [command] [-p name]    a new tab: a shell, or a command such as claude
+#                                      (with its own options: agvim tab claude --continue)
 #   agvim tabs [-p name]             the tabs of a project
 #   agvim agent <name> [-p name]     a new tab with a coding agent
 #   agvim agents [--running]         the agents it knows, and where to get them;
 #                                      --running: every agent tab, to jump to one
-#   agvim send [-t tab] [text]       put text (or what's piped in) in an agent's prompt
+#   agvim send [-t tab] [-p name] [text] put text (or what's piped in) in an agent's prompt
 #   agvim name <text>                rename the tab you're in; agents won't change it
 #   agvim shell                      a terminal of its own, outside any project
 #
@@ -407,19 +408,36 @@ case "$cmd" in
     ;;
   delete)
     parse "$@"
-    [ -n "$project" ] || project="$args[1]"
+    # Without -p it asks to be sure, also for a name typed after delete.
     if [ -z "$project" ]; then
-      project="$(pick_project "delete")" || exit 0
-      print -rn -- "Delete $project? Its tabs close; its folders stay. (y/N) "
-      read -r answer
-      [[ "$answer" == [yY]* ]] || exit 0
+      project="$args[1]"
+      [ -n "$project" ] || project="$(pick_project "delete")" || exit 0
+      if [ -t 0 ]; then
+        print -rn -- "Delete $project? Its tabs close; its folders stay. (y/N) "
+        read -r answer
+        [[ "$answer" == [yY]* ]] || exit 0
+      fi
     fi
     exec "$lib/project" delete "$project"
     ;;
   list) exec "$lib/project" list ;;
   shell) exec "$lib/project" shell ;;
   tab)
-    parse "$@"
+    # The command keeps its own options (agvim tab claude --continue): only -p before
+    # it, or -p <name> at the end, is AgVim's; after --, all of it is the command's.
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        -p | --project) [ -n "$2" ] || die "$1 needs a project name"; project="$2"; shift 2 ;;
+        -h | --help) help; exit 0 ;;
+        --) shift; break ;;
+        *) break ;;
+      esac
+    done
+    if [ $# -ge 2 ] && [[ "${@[-2]}" == (-p|--project) ]] && [ -z "$project" ]; then
+      project="${@[-1]}"
+      set -- "${@[1,-3]}"
+    fi
+    args=("$@")
     target="$(which_session)" || exit 1
     exec "$lib/project" tab "$target" "${args[@]}"
     ;;
@@ -561,11 +579,13 @@ case "$cmd" in
     # Saved projects are gitignored, so an update leaves them alone. Neovim rewrites its
     # plugin lockfile as it runs; the repo's copy decides the versions. The newest release,
     # or main while there are none.
+    # Copied from the app while GitHub couldn't be reached: a clone first.
+    "$lib/auto-update" --clone || die "couldn't reach GitHub, so nothing was updated. Try again when you're online."
     [ "$(git -C "$repo" rev-parse --abbrev-ref HEAD 2>/dev/null)" = main ] ||
       die "$repo isn't on the main branch: update it yourself (git merge), then run agvim update again"
     git -C "$repo" checkout -- nvim/lazy-lock.json 2>/dev/null
-    git -C "$repo" fetch -q origin --tags 2>/dev/null
-    latest="$(git -C "$repo" tag -l 'v*.*.*' --sort=-v:refname | head -1)"
+    git -C "$repo" fetch -q origin --tags 2>/dev/null || die "couldn't reach GitHub, so nothing was updated. Try again when you're online."
+    latest="$(git -C "$repo" tag -l 'v*.*.*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1)"
     if [ -n "$latest" ]; then
       git -C "$repo" merge-base --is-ancestor "$latest" HEAD || git -C "$repo" merge --ff-only "$latest"
     else

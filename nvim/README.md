@@ -33,19 +33,24 @@ Leader is Space. `Space` then wait shows every key (which-key). `Space ch` opens
 | `Ctrl-n` / `Space e` | toggle / focus file tree |
 | `Tab` / `Shift-Tab` / `Space x` | next / previous / close buffer |
 | `Ctrl-h/j/k/l` | move between splits and tmux panes |
-| `gd`, `Space gr`, `Space gi` | definition, references, implementations |
-| `K`, `Space ca`, `Space rs` | hover, code action, rename |
+| `gd` or `Space gd`, `Space gr`, `Space gi`, `Space fs` | definition, references, implementations, workspace symbols |
+| `K` or `Space I`, `Space ca`, `Space rs` | hover, code action, rename |
 | `Space fm` | format (also on save for Dart, Rust, Lua, Slint, Terraform; `:FormatToggle`) |
 | `Space xx` / `Space xt` / `Space xv` | all problems / line problem / inline problem text |
+| `Space xX` / `xL` / `xQ`, `Space cs` / `cl` | this file's problems / location list / quickfix list, symbols / LSP references (Trouble) |
 | `]e` / `[e`, `]d` / `[d` | next / previous error, diagnostic |
 | `Space ih` | inlay hints |
 | `Space rr` | project search and replace (regex) |
 | `F5` `F9` `F10` `F11` `Shift-F11` `Shift-F5` | debug: start/continue, breakpoint, over, into, out, stop |
 | `Space du` / `Space dh` | debugger UI / evaluate |
-| `Space Fr` `Fh` `FR` `Fq` `Fd` `Fo` `Fl` | Flutter: run, hot reload, restart, quit, devices, outline, log |
-| `Space Rr` `Rd` `Re` `Rm` `dt` | Rust: run, debug, explain error, expand macro, tests |
+| `Space dc` `db` `dd` `dj` `dl` `dk` `de` `dr` | debug: continue, breakpoint, conditional breakpoint, over, into, out, stop, run last |
+| `Space Fr` `Fh` `FR` `Fq` `Fd` `Fo` `Fl` `Fe` `Ft` `Fp` | Flutter: run, hot reload, restart, quit, devices, outline, log, emulators, DevTools, pub get |
+| `Space Rr` `Rd` `Re` `Rm` `Rc` `dt` | Rust: run, debug, explain error, expand macro, open Cargo.toml, tests |
 | `Space sp` | Slint live preview |
-| `Space ac` `as` `ab` `aa` `ad` | Claude Code: open, send selection, add file, accept/reject diff |
+| `Space ac` `as` `ab` `aa` `ad` `af` `ar` `aC` | Claude Code: open, send selection, add file, accept/reject diff, focus, resume, continue |
+| `Space //-` | insert a comment separator line |
+| Ctrl-W in a terminal | leave terminal mode (so it doesn't delete a word there) |
+| F13 / F14 / F15 / F16, F19 | Normal / Insert / Visual / Command mode from any mode; in insert mode save, in a terminal type `exit` |
 | Alt-g (anywhere, even in an agent terminal) | show / hide all git changes, side by side (like VS Code's Source Control) |
 | `agvim diff` in any terminal (or tmux prefix g) | the same view on its own, for whatever repo you are in; `agvim diff main` compares with a branch; `q` quits |
 | `Space gv` / `Space gV` | open / close the same changes view |

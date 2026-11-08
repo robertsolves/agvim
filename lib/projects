@@ -118,6 +118,9 @@ case "$1" in
       until [ "$(bar display -p -t "$TMUX_PANE" '#{window_active}')" = 1 ]; do
         sleep 0.3
       done
+      # Renamed while it waited (agvim rename): the tab has the name now.
+      now="$(bar display -p -t "$TMUX_PANE" '#{window_name}')"
+      [ -z "$now" ] || name="$now"
       if ! "$repo/lib/project" start "$name"; then
         sleep 5 # long enough to read why
         exit 1
@@ -132,6 +135,13 @@ case "$1" in
         env -u TMUX tmux attach -t "$sid" || sleep 1 # not a tight loop if it keeps failing
       done
       name="$(bar display -p -t "$TMUX_PANE" '#{window_name}')" || exit 0
+      # A console whose last shell you ended is closed: its tab goes, and it doesn't
+      # come back. (A crash takes the whole tmux with it, and it does come back.)
+      if [[ "$name" == Shell\ <-> ]] && [ ! -f "$store/$name" ] &&
+        env -u TMUX tmux list-sessions >/dev/null 2>&1; then
+        rm -rf "$store/.tabs/$name"
+        exit 0
+      fi
       # Closing a project takes this tab away first (lib/project close). Still
       # here, the project stopped some other way: it comes back from its last
       # save the next time this tab is looked at.

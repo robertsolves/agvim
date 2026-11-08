@@ -3,6 +3,7 @@
 src="${0:A:h:h}"
 base=$(mktemp -d /tmp/awf.XXXX); base=${base:A}
 export HOME=$base/home TMUX_TMPDIR=$base/t SHELL=/bin/zsh
+export AGVIM_REAL_TMUX="$(command -v tmux)"; mkdir -p $HOME/stubs; cp "$src/tests/tmux-guard" $HOME/stubs/tmux; export PATH="$HOME/stubs:$PATH" # only this test's own servers, also if its folder goes
 mkdir -p $HOME $TMUX_TMPDIR; unset TMUX
 repo=$HOME/clone; mkdir -p $repo
 (cd $src && git ls-files -co --exclude-standard -z | while IFS= read -r -d '' f; do [ -e "$f" ] && { mkdir -p "$repo/${f:h}"; cp -pR "$f" "$repo/$f"; }; done)

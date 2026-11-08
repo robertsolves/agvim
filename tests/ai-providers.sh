@@ -5,6 +5,7 @@
 real_home="$HOME"
 base=$(mktemp -d /tmp/awf.XXXX); base=${base:A}
 export TMUX_TMPDIR=$base; unset TMUX
+export AGVIM_REAL_TMUX="$(command -v tmux)"; mkdir -p $base/guard; cp "${0:A:h:h}/tests/tmux-guard" $base/guard/tmux; export PATH="$base/guard:$PATH" # only this test's own servers, also if its folder goes
 cat > $base/server.py <<'PY'
 import http.server, json, socketserver, sys
 TEXT = "x + b"
