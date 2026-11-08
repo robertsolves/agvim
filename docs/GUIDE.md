@@ -22,7 +22,7 @@ Or type `agvim` in any terminal. It asks what you want to do.
 
 After a stop, other programs, such as a dev server, come back as a shell, so start them again. Saved shell output can include anything you printed. It stays on your Mac in `saved-projects/.tabs`, readable only by you.
 
-**Tabs you can tell apart**: each tab's name has a colour of its own from the theme, and the icon next to it closes it. Right-click a tab to rename it, give it another colour, move it or close it; drag it, or press Alt-Shift-Left / Right, to move it. Projects at the top work the same way.
+**Tabs you can tell apart**: each tab's name has a colour of its own from the theme, and the icon next to it closes it. Closing a tab or a project stops everything started in it, also what would run on in the background, so nothing keeps working unseen. Right-click a tab to rename it, give it another colour, move it or close it; drag it, or press Alt-Shift-Left / Right, to move it. Projects at the top work the same way.
 
 **Working with agents**:
 

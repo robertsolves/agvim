@@ -434,11 +434,11 @@ close() {
   for wt in ${(f)"$(tmux list-sessions -F '#{session_name}	#{@parent}' 2>/dev/null | awk -F'\t' -v p="$1" '$2 == p { print $1 }')"}; do
     tmux set-option -t "=$wt:" @closing 1
     save "$wt" closing
-    tmux kill-session -t "=$wt"
+    "$lib/tab" end "=$wt" # and all that runs in it (lib/tab)
   done
   # The bar's tab first: it starts its project again if it sees it stop.
   [ -z "$2" ] || bar kill-window -t "$2" 2>/dev/null
-  tmux kill-session -t "=$1" 2>/dev/null
+  "$lib/tab" end "=$1"
   if bar has-session -t '=projects' 2>/dev/null; then
     write_open
   else
@@ -577,7 +577,7 @@ case "$cmd" in
     mv "$store/.tmp" "$store/$1"
     # Its tab goes now, and its saved tabs don't come back either.
     for win in ${(f)"$(tmux list-windows -t "=$1" -F '#{window_id}	#{@folder_tab}	#{@folder}' 2>/dev/null | awk -F'\t' -v f="$gone" '$2 == 1 && $3 == f { print $1 }')"}; do
-      tmux kill-window -t "$win"
+      "$lib/tab" end "$win"
     done
     if [ -f "$store/.tabs/$1/tabs" ]; then
       awk -F'\t' -v f="$gone" '$5 != f' "$store/.tabs/$1/tabs" >"$store/.tmp"
@@ -592,13 +592,13 @@ case "$cmd" in
     win="$(bar list-windows -t '=projects' -F '#{window_name}	#{window_id}' 2>/dev/null | awk -F'\t' -v n="$1" '$1 == n { print $2 }')"
     [ -z "$win" ] || bar kill-window -t "$win" 2>/dev/null
     tmux set-option -t "=$1:" @closing 1 2>/dev/null
-    tmux kill-session -t "=$1" 2>/dev/null
+    "$lib/tab" end "=$1"
     # Its worktrees stop too and are forgotten (their folders and branches stay, as
     # they may hold work); a project made later under this name starts without them.
     if [ -f "$store/.worktrees/$1" ]; then
       for w in ${(f)"$(cut -f1 "$store/.worktrees/$1")"}; do
         tmux set-option -t "=$w:" @closing 1 2>/dev/null
-        tmux kill-session -t "=$w" 2>/dev/null
+        "$lib/tab" end "=$w"
         rm -rf -- "$store/.tabs/$w"
       done
       rm -f -- "$store/.worktrees/$1"

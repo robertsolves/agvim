@@ -4,6 +4,8 @@
 #   tab new [session]                 new shell tab, named "shell N" with the lowest
 #                                     free N, in the folder of the tab you're on
 #   tab close <client> <window-id>    ask, then close that tab (just that terminal)
+#   tab end <target>...               close tabs (@id) or sessions (=name) and stop
+#                                     everything started in them
 #
 # Used by tmux.conf (Alt-t, the + Shell and x on the tab line, prefix c) and
 # Neovim's Space tn, as `agvim _tab`. Session defaults to the one you're in.
@@ -23,6 +25,48 @@ new() {
   [ -z "$dir" ] || tmux set-option -w -t "$s:" @folder "$dir"
 }
 
+# Every process started in the panes of tmux targets $@ (a window @id, or a session
+# =name), found while they're still there. Some ignore tmux's hang-up or leave the
+# tab's terminal (nohup, an agent's helpers) and would go on running unseen: they're
+# in the panes' process trees, or, once their parent has gone, still have the pane in
+# their environment (TMUX_PANE, with this server in TMUX).
+procs_of() {
+  local t rows=() roots=() ids=() server
+  for t in "$@"; do
+    if [[ "$t" == "="* ]]; then rows+=(${(f)"$(tmux list-panes -s -t "$t" -F '#{pane_pid} #{pane_id}' 2>/dev/null)"})
+    else rows+=(${(f)"$(tmux list-panes -t "$t" -F '#{pane_pid} #{pane_id}' 2>/dev/null)"}); fi
+  done
+  (( $#rows )) || return 0
+  roots=(${rows%% *})
+  ids=(${rows##* })
+  server="$(tmux display -p '#{socket_path},#{pid}' 2>/dev/null)"
+  ps -A -o pid=,ppid= | awk -v roots="${roots[*]}" '
+    BEGIN { n = split(roots, r, " "); for (i = 1; i <= n; i++) mine[r[i]] = 1 }
+    { up[$1] = $2; pids[NR] = $1 }
+    END {
+      do { more = 0; for (i = 1; i <= NR; i++) { p = pids[i]; if (!(p in mine) && (up[p] in mine)) { mine[p] = 1; more = 1 } } } while (more)
+      for (p in mine) print p
+    }'
+  [ -n "$server" ] || return 0
+  ps -Eww -A -o pid=,command= 2>/dev/null | awk -v srv=" TMUX=$server," -v ids=" ${ids[*]} " '
+    index($0, srv) && match($0, / TMUX_PANE=%[0-9]+/) && index(ids, " " substr($0, RSTART + 11, RLENGTH - 11) " ") { print $1 }'
+}
+
+# Closes tmux targets $@ and stops all they started: tmux's hang-up first, which most
+# programs end on; what's left a moment later is asked to stop, then made to.
+finish() {
+  local pids=(${(u)${(f)"$(procs_of "$@")"}}) t
+  pids=(${pids:#$$}) # this script: it may run in one of them, and ends anyway
+  for t in "$@"; do
+    if [[ "$t" == "="* ]]; then tmux kill-session -t "$t" 2>/dev/null; else tmux kill-window -t "$t" 2>/dev/null; fi
+  done
+  (( $#pids )) || return 0
+  # Apart from the tab, so its hang-up doesn't end this too.
+  ( trap '' HUP
+    sleep 2; kill -TERM $pids 2>/dev/null
+    sleep 3; kill -KILL $pids 2>/dev/null ) </dev/null >/dev/null 2>&1 &!
+}
+
 close() {
   # Run from run-shell, which shows any output or a non-zero exit in the pane
   # (view mode: it swallows every key and click): -b returns at once with 0.
@@ -35,17 +79,18 @@ close() {
     project="$(tmux display -p -t "$2" '#{session_name}')"
     folder="$(tmux display -p -t "$2" '#{@folder}')"
     tmux confirm-before -b -t "$1" -p "Close ${name//\#/##} and take it out of ${project//\#/##}? (y/n)" \
-      "kill-window -t '$2' ; run-shell -b \"~/.local/bin/agvim _project remove '${project//\'/}' '${folder//\'/\'\\\'\'}' >/dev/null 2>&1 ; true\""
+      "run-shell -b \"~/.local/bin/agvim _tab end '$2' >/dev/null 2>&1 ; true\" ; run-shell -b \"~/.local/bin/agvim _project remove '${project//\'/}' '${folder//\'/\'\\\'\'}' >/dev/null 2>&1 ; true\""
     return 0
   fi
-  tmux confirm-before -b -t "$1" -p "Close ${name//\#/##}? (y/n)" "kill-window -t '$2'"
+  tmux confirm-before -b -t "$1" -p "Close ${name//\#/##}? (y/n)" "run-shell -b \"~/.local/bin/agvim _tab end '$2' >/dev/null 2>&1 ; true\""
 }
 
 case "$1" in
   new) new "$2" ;;
   close) close "$2" "$3" ;;
+  end) shift; finish "$@" ;;
   *)
-    sed -n '2,8p' "${0:A}" | sed 's/^# \{0,1\}//'
+    sed -n '2,10p' "${0:A}" | sed 's/^# \{0,1\}//'
     [ -z "$1" ] || [ "$1" = -h ] || [ "$1" = --help ]
     ;;
 esac

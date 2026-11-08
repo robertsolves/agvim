@@ -179,7 +179,7 @@ case "$1" in
       "$repo/lib/project" close "$name" "$2"
     else
       bar kill-window -t "$2"
-      work kill-session -t "=$name"
+      env -u TMUX "$repo/lib/tab" end "=$name" # and all that runs in it
     fi
     ;;
   stop)
@@ -204,7 +204,7 @@ case "$1" in
       name="${s%%$'\t'*}"
       parent="${s#*$'\t'}"
       if (( ${sessions[(Ie)$name]} )) || (( ${sessions[(Ie)$parent]} )) || [[ "$name" == Shell\ <-> ]]; then
-        work kill-session -t "=$name" 2>/dev/null
+        env -u TMUX "$repo/lib/tab" end "=$name"
       fi
     done
     [ -n "$(work list-sessions 2>/dev/null)" ] || work kill-server 2>/dev/null

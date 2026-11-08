@@ -308,7 +308,7 @@ close() {
   render "$p"
   print -r -- "Closed $branch${keep:+ (the branch is kept)}."
   # Last: run from a tab of that worktree, this script ends with it.
-  tmux kill-session -t "=$s" 2>/dev/null
+  "$lib/tab" end "=$s" # and all that runs in it
 }
 
 merge() {
