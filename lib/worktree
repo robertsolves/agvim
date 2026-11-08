@@ -146,7 +146,17 @@ new() {
   [ -f "$store/$p" ] || die "worktrees are for saved projects; $p isn't one"
   local repo
   repo="$(repo_here "$(shown_in "$p" || print "$p")")"
-  [ -n "$repo" ] || repo="$(git -C "$(head -1 "$store/$p")" rev-parse --show-toplevel 2>/dev/null)"
+  # Only a repo of the project's own folders: a tab that wandered elsewhere (or a
+  # worktree of it) doesn't pick which repo gets the worktree.
+  local d own="" common_here
+  common_here="$(git -C "${repo:-/nonexistent}" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)"
+  while IFS= read -r d; do
+    [ -n "$d" ] && [ -n "$common_here" ] || continue
+    [ "$(git -C "$d" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" = "$common_here" ] && own=1
+  done <"$store/$p"
+  if [ -z "$own" ]; then
+    repo="$(git -C "$(head -1 "$store/$p")" rev-parse --show-toplevel 2>/dev/null)"
+  fi
   [ -n "$repo" ] || die "$p isn't a git repo"
   # A worktree's own folder: branch off from what it has, but the repo is the main one.
   local common main

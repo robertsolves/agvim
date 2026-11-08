@@ -55,7 +55,7 @@ catalog() {
     for f in "$dir"/skills/*/SKILL.md(N); do
       n="${f:h:t}"
       d="$(sed -n '2,/^---$/s/^description: *//p' "$f" | head -1 | sed 's/^>-*$//' | tr -d '"')"
-      [ -n "$d" ] || d="$(sed -n '/^description:/,/^[a-z_]*:/{/^  /p}' "$f" | head -1 | sed 's/^ *//')"
+      [ -n "$d" ] || d="$(sed -n '/^description:/,/^[a-z_]*:/{/^  /p;}' "$f" | head -1 | sed 's/^ *//')"
       print -r -- "$name${tab}skill${tab}$n${tab}${d:0:110}"
     done
     for f in "$dir"/commands/*.md(N); do
