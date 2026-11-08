@@ -52,7 +52,7 @@ tmux select-window -t '=A:=nvim'; sleep .3
 TMUX_PANE=$(tmux display -p -t '=A:=claude' '#{pane_id}') agvim _attention set done; sleep .3
 echo "tab dot: $(tmux show -wqv -t '=A:=claude' @attention) bar state: $(b show -wqv -t '=projects:=A' @agent-state)"
 tmux select-window -t '=A:=claude'; agvim _attention sync; sleep .3
-echo "after looking: tab=$(tmux show -wqv -t '=A:=claude' @attention). bar=$(b show -wqv -t '=projects:=A' @attention)."
+echo "after looking: tab=$(tmux show -wqv -t '=A:=claude' @attention). bar state stays: $(b show -wqv -t '=projects:=A' @agent-state)."
 echo "mode=$(tmux display -p -t '=A:' '#{pane_in_mode}') bar mode=$(b display -p -t '=projects:' '#{pane_in_mode}')"
 
 echo "--- running"

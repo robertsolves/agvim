@@ -219,7 +219,7 @@ case "$cmd" in
         where="$args[2]"
         [ -d "$where" ] && where="${where:A}"
         name="${args[3]:-${${where:t}%.git}}"
-        [[ "$name" != */* && "$name" != .* ]] || die "not a name for a source: $name"
+        [[ -n "$name" && "$name" != */* && "$name" != .* ]] || die "not a name for a source: $name"
         sources >/dev/null
         awk -F'\t' -v s="$name" '$1 == s' "$config" | grep -q . && die "there's a source called $name already"
         print -r -- "$name${tab}$where" >>"$config"

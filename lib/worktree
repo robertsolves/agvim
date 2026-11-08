@@ -153,7 +153,7 @@ new() {
   # worktree of it) doesn't pick which repo gets the worktree.
   local d own="" common_here
   common_here="$(git -C "${repo:-/nonexistent}" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)"
-  while IFS= read -r d; do
+  while IFS= read -r d || [ -n "$d" ]; do # the last line may have no newline
     [ -n "$d" ] && [ -n "$common_here" ] || continue
     [ "$(git -C "$d" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" = "$common_here" ] && own=1
   done <"$store/$p"

@@ -7,6 +7,7 @@ return {
     "coder/claudecode.nvim",
     lazy = false,
     opts = {
+      log_level = "warn", -- not "info": it printed on every start and exit
       terminal = { provider = "native", split_side = "right", split_width_percentage = 0.4 },
     },
     keys = {
