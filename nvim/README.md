@@ -60,7 +60,7 @@ Leader is Space. `Space` then wait shows every key (which-key). `Space ch` opens
 | Tab or Alt-l, Alt-n / Alt-p, Alt-e | accept an AI suggestion, next / previous, dismiss (`agvim ai` chooses the source) |
 | `Space tn`, Alt-t or `+ Shell` | new full-screen shell tab |
 | Alt-. / Alt-, / `Space tr` | next / previous / rename terminal |
-| click a tab (top: projects, middle: worktrees, bottom: this project's tabs) | switch to it; the icon on a bottom tab closes that terminal, on a project at the top closes it and all its tabs (both ask); `+ Project` at the top opens a project and `+ Shell` a console; `+ Worktree` and `Merge` in the middle row; right-click a tab to rename it, change its colour, move or close it; drag or Alt-Shift-Left / Right to move it; with too many to fit, `<` `>` or the wheel on a bar move along it |
+| click a tab (top: projects, middle: worktrees, bottom: this project's tabs, which in a worktree start with its branch) | switch to it; the icon on a bottom tab closes that terminal, on a project at the top closes it and all its tabs (both ask); `+ Project` at the top opens a project and `+ Shell` a console; `+ Worktree` and `Merge` in the middle row; right-click a tab to rename it, change its colour, move or close it; drag or Alt-Shift-Left / Right to move it; with too many to fit, `<` `>` or the wheel on a bar move along it |
 | `Space a>` / `Space ae` | send the selection (or the change or line here) / the errors here to the agent you used last, unsent |
 | `Space tR` / `Space tS` | ask that agent to `/resume-session` / add skills and commands to this project |
 | Alt-Shift-B, tmux prefix a, prefix m | new worktree, every running agent, merge this worktree |

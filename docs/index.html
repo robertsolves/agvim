@@ -76,6 +76,14 @@
     },
     {
      "@type": "Question",
+     "name": "Can several agents work on one project at once?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Yes. A worktree gives an agent a branch in a folder of its own, with its own tabs, so agents don't touch each other's files. Merge brings the work back into the branch it came from, or opens a pull request. A dot on every tab shows whether its agent is working, waiting for you or done."
+     }
+    },
+    {
+     "@type": "Question",
      "name": "Does AgVim work on Windows or Linux?",
      "acceptedAnswer": {
       "@type": "Answer",
@@ -95,7 +103,7 @@
      "name": "What happens when I close a project?",
      "acceptedAnswer": {
       "@type": "Answer",
-      "text": "Its tabs are saved and everything running in them stops, which frees the memory. When you open it again, the tabs come back, and agents with a resume command continue their last conversation. Other programs, such as dev servers, come back as a shell for you to restart."
+      "text": "Its tabs are saved and everything running in them stops, which frees the memory. When you open it again, the tabs come back, and agents with a resume command continue their conversations, each Claude tab its own. Other programs, such as dev servers, come back as a shell for you to restart."
      }
     },
     {
@@ -160,7 +168,8 @@
   <p class="lead">A free, open source Neovim workspace for Mac that makes agentic coding easy.</p>
 
   <p>Big IDEs like VS Code were built for people typing every line. Now that agents can do so much of that, most of an IDE just gets in the way. What's left to do is read code, review changes and keep your agents organised, and that only takes something simple.</p>
-  <p>AgVim gives each project its own tab, with full-screen tabs inside for Neovim, lazygit, shells and coding agents, one click apart. It works with Claude, Codex, Copilot, Gemini, DeepSeek, OpenCode and more; you install the ones you use. Close a project and everything in it stops, freeing the memory. Open it again and your tabs come back, and agents that can resume continue their last conversation.</p>
+  <p>AgVim gives each project its own tab, with full-screen tabs inside for Neovim, lazygit, shells and coding agents, one click apart. It works with Claude, Codex, Copilot, Gemini, DeepSeek, OpenCode and more; you install the ones you use. Close a project and everything in it stops, freeing the memory. Open it again and your tabs come back, and agents that can resume continue their conversations, each Claude tab its own.</p>
+  <p>Several agents can work on one project at once. A worktree gives one a branch in a folder of its own, with its own tabs, and Merge brings the work back. A dot on every tab shows whether its agent is working, waiting for you or done.</p>
   <p>As you type, AI suggestions appear and Tab accepts them. That's free through Copilot's free tier with a GitHub account, or use your own key for Claude, OpenAI, Gemini, DeepSeek and many others.</p>
 
   <h2>Install</h2>
@@ -180,12 +189,14 @@
   <p>Yes. AgVim is free and open source under the MIT License. AI suggestions are free through GitHub Copilot's free tier with a GitHub account. If you add your own API key, that service may charge you for what you use.</p>
   <h3>Which coding agents does AgVim work with?</h3>
   <p>AgVim has shortcuts for Claude Code, Codex, Copilot, Gemini, DeepSeek TUI, OpenCode, Kilo, Freebuff, Cursor, Aider, Amp and Qwen. You install the agents you want to use.</p>
+  <h3>Can several agents work on one project at once?</h3>
+  <p>Yes. A worktree gives an agent a branch in a folder of its own, with its own tabs, so agents don't touch each other's files. Merge brings the work back into the branch it came from, or opens a pull request. A dot on every tab shows whether its agent is working, waiting for you or done.</p>
   <h3>Does AgVim work on Windows or Linux?</h3>
   <p>No. AgVim is macOS only.</p>
   <h3>Do I need to install Neovim or tmux first?</h3>
   <p>No. Setup installs what's missing once, including Homebrew, kitty, git, Neovim, tmux and lazygit. Tools you already have are kept and updated to their latest versions.</p>
   <h3>What happens when I close a project?</h3>
-  <p>Its tabs are saved and everything running in them stops, which frees the memory. When you open it again, the tabs come back, and agents with a resume command continue their last conversation. Other programs, such as dev servers, come back as a shell for you to restart.</p>
+  <p>Its tabs are saved and everything running in them stops, which frees the memory. When you open it again, the tabs come back, and agents with a resume command continue their conversations, each Claude tab its own. Other programs, such as dev servers, come back as a shell for you to restart.</p>
   <h3>How does AgVim update?</h3>
   <p>It checks for a new release each time it opens and updates itself before starting. Offline, it opens the version you have after a few seconds at most. You can turn this off with agvim autoupdate off.</p>
 

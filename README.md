@@ -4,7 +4,11 @@
 
 A free, open source Neovim workspace for Mac that makes agentic coding easy. Big IDEs were built for people typing every line. Now that agents can do so much of that, what's left is reading code, reviewing changes and keeping your agents organised, and that only takes something simple.
 
-Each project gets a tab, with full-screen tabs inside for Neovim, lazygit, shells and coding agents, one click apart. It works with Claude, Codex, Copilot, Gemini, DeepSeek, OpenCode and more; you install the ones you use. Close a project and everything in it stops, freeing the memory. Open it again and your tabs come back, and agents that can resume continue their last conversation. As you type, AI suggestions appear, free through Copilot's free tier with a GitHub account, or from your own Claude, OpenAI, Gemini, DeepSeek or other API key.
+Each project gets a tab, with full-screen tabs inside for Neovim, lazygit, shells and coding agents, one click apart. It works with Claude, Codex, Copilot, Gemini, DeepSeek, OpenCode and more; you install the ones you use. Close a project and everything in it stops, freeing the memory. Open it again and your tabs come back, and agents that can resume continue their conversations, each Claude tab its own.
+
+Several agents can work on one project at once: a worktree gives one a branch in a folder of its own, with its own tabs, and **Merge** brings the work back. A dot on every tab shows whether its agent is working, waiting for you or done.
+
+As you type, AI suggestions appear, free through Copilot's free tier with a GitHub account, or from your own Claude, OpenAI, Gemini, DeepSeek or other API key.
 
 **Website:** https://robertsolves.github.io/agvim/
 
