@@ -1,5 +1,8 @@
 # Bugs found in AgVim
 
+**Status: all nine fixed** (after `fa20941`), each with a check in `tests/` (`keep`, `cli`,
+`agents`) except 5 (checked headless), 6 and 9 (checked on scratch servers).
+
 Checked 2026-11-09 on macOS (Darwin), Neovim v0.12.6, with the repository's own tmux and zsh.
 No product code was changed for this log. Line numbers are from commit `53fcd1d`, the
 working tree being that commit plus this file's own additions.

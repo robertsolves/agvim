@@ -169,11 +169,14 @@ session_of() {
 # saves must not undo. One save of a project at a time: an autosave halfway through
 # when close saves would delete what close wrote.
 save() {
-  local lock="$store/.tabs/.$1.lock" i
+  local lock="$store/.tabs/.$1.lock" i got=""
   mkdir -p "$store/.tabs"
-  for i in {1..50}; do mkdir "$lock" 2>/dev/null && break; sleep 0.1; done # a stale lock goes after 5 s
+  for i in {1..50}; do mkdir "$lock" 2>/dev/null && { got=1; break; }; sleep 0.1; done
+  # Still there after 5 s: left by a save that was killed. Cleared, and taken.
+  [ -n "$got" ] || { rmdir "$lock" 2>/dev/null; mkdir "$lock" 2>/dev/null && got=1; }
   save_now "$@"
-  rmdir "$lock" 2>/dev/null
+  # Only the save that holds the lock takes it away.
+  [ -z "$got" ] || rmdir "$lock" 2>/dev/null
   return 0
 }
 
@@ -310,6 +313,10 @@ ensure_lazygit() {
   fi
 }
 
+# Marks session $1 as one AgVim started, so agvim stop may stop it. A session of
+# yours that the bar only shows as a tab never gets this, and keeps running.
+own() { tmux set-option -t "=$1:" @agvim 1 2>/dev/null; }
+
 # The tmux session of project $1, unless it's running already.
 start() {
   tmux has-session -t "=$1" 2>/dev/null && return 0
@@ -325,12 +332,14 @@ start() {
   fi
   if [ -s "$store/.tabs/$1/tabs" ]; then
     restore "$1" "${folders[@]}"
+    own "$1"
     [ "${#folders}" -eq 0 ] || ensure_lazygit "$1" "$folders[1]" # not for a console
     return
   fi
   [ -f "$store/$1" ] || [ -n "$wt" ] || die "no project called $1"
   [ "${#folders}" -gt 0 ] || die "$1 has no folders left"
   tmux new-session -d -s "$1" -n nvim -c "$folders[1]" "nvim .; true"
+  own "$1"
   ensure_lazygit "$1" "$folders[1]"
   tmux new-window -d -t "=$1:" -n "shell 1" -c "$folders[1]"
   local dir
@@ -453,6 +462,7 @@ new_shell() {
     n=$((n + 1))
   done
   tmux new-session -d -s "Shell $n" -n "shell 1" -c "$HOME"
+  own "Shell $n"
   show "Shell $n"
 }
 
@@ -678,8 +688,9 @@ case "$cmd" in
       run="$*"
       [ $# -eq 1 ] && [ -n "$launch[$1]" ] && run="$launch[$1]"
       win_id="$(tmux new-window -P -F '#{window_id}' -t "=$name:" -n "${1:t}" -c "$(tmux display -p -t "=$name:" '#{session_path}')" "$run$then_shell")"
-      # An agent's tab is marked, for agvim send and the list of agents.
-      [ $# -eq 1 ] && [ -n "$launch[$1]" ] && tmux set-option -w -t "$win_id" @agent "$1"
+      # An agent's tab is marked, for agvim send and the list of agents, whatever
+      # arguments it was given (agvim tab claude --continue).
+      [ -n "$launch[$1]" ] && tmux set-option -w -t "$win_id" @agent "$1"
     fi
     show "$name"
     ;;

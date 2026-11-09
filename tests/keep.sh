@@ -57,9 +57,14 @@ o send-keys -t o Enter; sleep 1
 o send-keys -t o Escape; sleep .5; o kill-server; sleep .3
 
 echo "--- keep running off: closing stops AgVim's sessions, not yours"
+# Yours, made before agvim opens, which shows them as tabs: one named like a console.
+tmux new-session -d -s mine 'sleep 999'; tmux new-session -d -s 'Shell 7' 'sleep 999'
 window "agvim continue"; tmux new-session -d -s scratch 'sleep 999' # yours, made after AgVim opened
+echo "adopted as tabs: $(b list-windows -t '=projects' -F '#W' | grep -cxE 'mine|Shell 7')"
 closewin; sleep 1
 echo "bar up: $(b has-session -t '=projects' 2>/dev/null && echo 1 || echo 0) A up: $(tmux has-session -t '=A' 2>/dev/null && echo 1 || echo 0) scratch up: $(tmux has-session -t '=scratch' 2>/dev/null && echo 1 || echo 0)"
+echo "made before up: mine=$(tmux has-session -t '=mine' 2>/dev/null && echo 1 || echo 0) shell7=$(tmux has-session -t '=Shell 7' 2>/dev/null && echo 1 || echo 0)"
+tmux kill-session -t '=mine'; tmux kill-session -t '=Shell 7'; rm -rf $repo/saved-projects/.tabs/mine "$repo/saved-projects/.tabs/Shell 7"
 agvim keep-running on >/dev/null
 
 echo "--- empty tab name and a removed agent still restore"

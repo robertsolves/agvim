@@ -465,7 +465,7 @@ case "$cmd" in
   send) exec "$lib/send" "$@" ;;
   worktree | branch)
     case "$1" in
-      new | list | merge | close) exec "$lib/worktree" "$@" ;;
+      new | list | merge | close | -h | --help) exec "$lib/worktree" "$@" ;;
       *) exec "$lib/worktree" new "$@" ;;
     esac
     ;;
@@ -544,7 +544,7 @@ case "$cmd" in
           ;;
         remove)
           updated="$(grep -vxF -- "$where" "$roots_file")"
-          print -r -- "$updated" >"$roots_file"
+          if [ -n "$updated" ]; then print -r -- "$updated" >"$roots_file"; else : >"$roots_file"; fi # the last one: no roots, not a blank line
           ;;
         *) die "usage: agvim roots [add|remove <folder>]" ;;
       esac

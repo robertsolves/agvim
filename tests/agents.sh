@@ -54,6 +54,12 @@ echo "agent got: $(cat ~/claude-got 2>/dev/null)"
 print 'from a pipe' | agvim send -p A; sleep .3; tmux send-keys -t '=A:=claude' Enter; sleep .5
 echo "agent got piped: $(tail -1 ~/claude-got 2>/dev/null)"
 echo "shown after send: $(tmux display -p -t '=A:' '#W')"
+# A program that isn't an agent, looked at last, doesn't get what's sent.
+tmux new-window -d -t '=A:' -n pager 'cat'; sleep .5; tmux select-window -t '=A:=pager'; agvim _attention sync; sleep .3
+echo "pager taken as agent: $([ "$(tmux show -qv -t '=A' @last-agent)" = "$(tmux display -p -t '=A:=pager' '#{window_id}')" ] && echo 1 || echo 0)"
+agvim send -p A 'third'; sleep .3; tmux send-keys -t '=A:=claude' Enter; sleep .5
+echo "sent past the pager to: $(tmux display -p -t '=A:' '#W') got: $(tail -1 ~/claude-got 2>/dev/null)"
+tmux kill-window -t '=A:=pager'
 
 echo "--- attention"
 tmux select-window -t '=A:=nvim'; sleep .3
@@ -89,4 +95,14 @@ echo "R saved: $(awk -F'\t' '$8 != "-" && $8 != "nvim" && $8 != "lazygit" { prin
 echo "R back: $(back)"
 $repo/lib/project close R </dev/null >/dev/null 2>&1; f=$repo/saved-projects/.tabs/R/tabs; cut -f1-11 $f > $f.n && mv $f.n $f # saved before AgVim kept ids
 echo "R without ids: $(back)"
+
+echo "--- closing a worktree keeps an edited .env"
+(cd ~/code/a && print .env > .gitignore && print .env > .worktreeinclude && print SECRET=1 > .env && git add .gitignore .worktreeinclude && git commit -qm ignore)
+agvim worktree envy -p A --agent none; sleep 1.5
+d=$(awk -F'\t' '$2 == "envy" { print $3 }' $repo/saved-projects/.worktrees/A)
+echo "env copied: $(cat $d/.env)"
+echo "unchanged: $(agvim _worktree stat $d main)"
+print SECRET=2 > $d/.env
+echo "edited: $(agvim _worktree stat $d main)"
+agvim worktree close envy -p A </dev/null >/dev/null 2>&1; echo "close without asking: rc=$? env kept: $(cat $d/.env 2>/dev/null)"
 o kill-server 2>/dev/null; b kill-server 2>/dev/null; tmux kill-server 2>/dev/null

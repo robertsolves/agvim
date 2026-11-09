@@ -37,22 +37,29 @@ else
   session="$sid"
 fi
 
-# Agent tabs: started as one (@agent), or running something other than a shell,
-# Neovim or lazygit.
+# Agent tabs (id, agent, name): started as one (@agent), or with an agent from
+# agents.tsv in front (lib/attention's fg_kind). Not any other program: a pager or
+# ssh would get the text, and the Enter after it.
 agents() {
-  tmux list-windows -t "$session" -F '#{window_id}	#{@agent}	#{window_name}	#{pane_current_command}' |
-    awk -F'\t' '$2 != "" || $4 !~ /^-?(zsh|bash|fish|sh|nvim|lazygit)$/ { print }'
+  local win agent name tty
+  tmux list-windows -t "$session" -F '#{window_id}	#{?#{@agent},#{@agent},-}	#{?#{window_name},#{window_name},-}	#{pane_tty}' |
+    while IFS=$'\t' read -r win agent name tty; do
+      if [ "$agent" != - ] || [ "$("$lib/attention" kind "$tty" </dev/null)" = agent ]; then
+        print -r -- "$win	$agent	$name"
+      fi
+    done
 }
 
 win=""
+found="$(agents)"
 if [ -n "$target" ]; then
-  win="$(agents | awk -F'\t' -v t="$target" '$2 == t || $3 == t { print $1; exit }')"
+  win="$(print -r -- "$found" | awk -F'\t' -v t="$target" '$2 == t || $3 == t { print $1; exit }')"
   [ -n "$win" ] || win="$(tmux list-windows -t "$session" -F '#{window_id}	#{window_name}' | awk -F'\t' -v t="$target" '$2 == t { print $1; exit }')"
 fi
 if [ -z "$win" ] && [ -z "$target" ]; then
   last="$(tmux show-options -qv -t "$session" @last-agent)"
-  [ -n "$last" ] && agents | cut -f1 | grep -qxF -- "$last" && win="$last"
-  [ -n "$win" ] || win="$(agents | head -1 | cut -f1)"
+  [ -n "$last" ] && print -r -- "$found" | cut -f1 | grep -qxF -- "$last" && win="$last"
+  [ -n "$win" ] || win="$(print -r -- "$found" | head -1 | cut -f1)"
 fi
 if [ -z "$win" ]; then
   # Nothing to send to: start one. -t names it; otherwise ask, when someone can answer.

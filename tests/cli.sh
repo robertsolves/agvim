@@ -15,11 +15,14 @@ cd "$HOME/code/my lib"; a new . -n "my lib" --no-open; a new . --no-open; a add 
 a tabs -p app; a rename apps -p app; a list; a remove ~/code/two -p apps; a list
 a close; a tabs; a delete -p fresh; a delete -p agvim; a rename x -p agvim; a delete ../..; a open -p nope </dev/null
 a roots; a roots add ~/roots1; a roots remove ~/Desktop; a terminal /nope; a terminal Terminal; a terminal auto; a version; a nope; a help | head -3
+a worktree -h | sed -n 2p; a branch --help | grep -c 'worktree new' | xargs echo "worktree help lines:"
+for r in ~/Projects ~/Developer ~/code ~/roots1; do agvim roots remove $r >/dev/null; done; echo "last root removed, bytes left: $(wc -c < ~/.config/agvim/roots | tr -d ' ')"
 echo "=== with the bar"; print 'set -g default-terminal xterm-256color' > ~/outer.conf
 o() { tmux -L outer "$@"; }; b() { tmux -L projects "$@"; }
 o -f ~/outer.conf new-session -d -s o -x 110 -y 30 "cd ~/code/app; agvim open -p apps; sleep 100"; o set -g status off; sleep 3; o capture-pane -p -t o | sed -n 1p | sed -E 's/ +$//'
 tmux list-windows -t '=apps' -F '  #{window_name}'; a list; a tabs -p apps
-a tab -p apps; a tab claude -p apps; a tabs -p apps
+a tab -p apps; a tab claude -p apps; a tab claude --continue -p apps; a tabs -p apps
+echo "agent tabs marked: $(tmux list-windows -t '=apps' -F '#{@agent}' | grep -cx claude)"
 a save; ls -a $repo/saved-projects | tr '\n' ' '; echo
 # from a shell inside the project
 tmux select-window -t '=apps:=shell 1'; sleep .4; o send-keys -t o -l "cd ~/code/two; agvim add . > ~/in.log 2>&1; agvim tabs >> ~/in.log 2>&1; cd ~/code/app"; o send-keys -t o Enter; sleep 2.5; cat ~/in.log; a list

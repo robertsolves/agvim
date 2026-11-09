@@ -195,18 +195,17 @@ case "$1" in
     if [ "$2" != --now ] && [ ! -f ~/.config/agvim/keep-running-off ]; then
       exit 0
     fi
-    # Stop only what is AgVim's: the bar's projects and their worktrees, and
-    # consoles. Sessions you made yourself in tmux keep running. The bar goes first,
-    # so its tabs don't start their projects again as they end.
-    sessions=(${(f)"$(bar list-windows -t '=projects' -F '#{window_name}' 2>/dev/null)"})
+    # Stop only what is AgVim's: what it started (@agvim, lib/project own), saved
+    # projects and worktrees (@parent). Sessions you made yourself in tmux keep
+    # running, even when the bar shows them as tabs. The bar goes first, so its tabs
+    # don't start their projects again as they end.
     bar kill-server 2>/dev/null
-    for s in ${(f)"$(work list-sessions -F '#{session_name}	#{@parent}' 2>/dev/null)"}; do
-      name="${s%%$'\t'*}"
-      parent="${s#*$'\t'}"
-      if (( ${sessions[(Ie)$name]} )) || (( ${sessions[(Ie)$parent]} )) || [[ "$name" == Shell\ <-> ]]; then
-        env -u TMUX "$repo/lib/tab" end "=$name"
-      fi
-    done
+    work list-sessions -F '#{session_name}	#{?#{@parent},#{@parent},-}	#{?#{@agvim},1,-}' 2>/dev/null |
+      while IFS=$'\t' read -r name parent mine; do
+        if [ "$mine" = 1 ] || [ "$parent" != - ] || [ -f "$store/$name" ]; then
+          env -u TMUX "$repo/lib/tab" end "=$name" </dev/null
+        fi
+      done
     [ -n "$(work list-sessions 2>/dev/null)" ] || work kill-server 2>/dev/null
     exit 0
     ;;

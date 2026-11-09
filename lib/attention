@@ -14,10 +14,11 @@
 #                                  shown, and updates the bar's dots
 #   attention watch [--restart]    while the bar is up: every agent's dot from what
 #                                  its screen does (watch_tick), for agents without hooks
+#   attention kind <tty>           what runs in front there (fg_kind), for lib/send
 #
 # Used as `agvim _attention`, from tmux.conf, projects.conf and lib/claude-settings.json.
-# Prints nothing and always exits 0: tmux hooks and agents run it.
-exec >/dev/null 2>&1
+# Prints nothing (but kind) and always exits 0: tmux hooks and agents run it.
+if [ "$1" = kind ]; then exec 2>/dev/null; else exec >/dev/null 2>&1; fi
 unset TMUX
 here="${0:A:h}" # a function's own $0 is its name, so this is set out here
 bar() { command tmux -L projects "$@"; }
@@ -252,14 +253,21 @@ case "$1" in
       [ "$(tmux show-options -wqv -t "$shown" @agent-state)" = done ]; then
       tmux set-option -wu -t "$shown" @agent-state
     fi
-    # The agent tab you looked at last is where agvim send sends (lib/send).
-    for line in ${(f)"$(tmux list-sessions -F '#{session_id}	#{window_id}	#{@agent}	#{pane_current_command}')"}; do
+    # The agent tab you looked at last is where agvim send sends (lib/send). Only an
+    # agent's: one started as one (@agent), or one named in agents.tsv in front. A
+    # pager or ssh mustn't get the text, and the Enter after it.
+    agents=(${(f)"$(grep -v '^#' "$here/agents.tsv" | cut -f2)"})
+    for line in ${(f)"$(tmux list-sessions -F '#{session_id}	#{window_id}	#{@agent}	#{pane_tty}')"}; do
       parts=("${(@s:	:)line}")
-      if [ -n "$parts[3]" ] || [[ "$parts[4]" != (-|)(zsh|bash|fish|sh|nvim|lazygit) ]]; then
+      if [ -n "$parts[3]" ] || [ "$(fg_kind "$parts[4]")" = agent ]; then
         tmux set-option -t "$parts[1]" @last-agent "$parts[2]"
       fi
     done
     sync_bar
+    ;;
+  kind)
+    agents=(${(f)"$(grep -v '^#' "$here/agents.tsv" | cut -f2)"})
+    [ -z "$2" ] || fg_kind "$2"
     ;;
   watch)
     # One at a time, for as long as the bar is up (lib/projects and agvim refresh

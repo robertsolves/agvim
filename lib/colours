@@ -33,8 +33,12 @@ case "$1" in
     # New tabs come in bunches (a project starting), each its own hook: one at a time,
     # or two would take the same colour.
     lock="${TMUX_TMPDIR:-/tmp}/agvim-colour-$UID.lock"
-    for _ in {1..40}; do mkdir "$lock" 2>/dev/null && break; sleep .05; done
-    trap 'rmdir "$lock" 2>/dev/null' EXIT
+    got=""
+    for _ in {1..40}; do mkdir "$lock" 2>/dev/null && { got=1; break; }; sleep .05; done
+    # Still there after 2 s: left by one that was killed. Cleared, and taken.
+    [ -n "$got" ] || { rmdir "$lock" 2>/dev/null; mkdir "$lock" 2>/dev/null && got=1; }
+    # Only the one that holds the lock takes it away.
+    [ -z "$got" ] || trap 'rmdir "$lock" 2>/dev/null' EXIT
     # Already has one (restored): keep it.
     [ -n "$(srv "$2" show-options -wqv -t "$3" @colour)" ] && exit 0
     # The first in the sequence that no other tab here has; when all are taken,

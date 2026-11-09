@@ -126,6 +126,9 @@ stat() {
   fork="$(git -C "$dir" merge-base "$base" HEAD 2>/dev/null)" || { print -r -- ""; return; }
   files="$(git -C "$dir" diff --name-only "$fork" 2>/dev/null | wc -l | tr -d ' ')"
   files=$((files + $(git -C "$dir" ls-files --others --exclude-standard 2>/dev/null | wc -l)))
+  # And the included files (.env and the like) changed here, which git doesn't count.
+  local main="$(git -C "$dir" worktree list --porcelain 2>/dev/null | sed -n '1s/^worktree //p')"
+  [ -z "$main" ] || files=$((files + $(changed_included "$main" "$dir" | wc -l)))
   commits="$(git -C "$dir" rev-list --count "$fork..HEAD" 2>/dev/null)"
   print -r -- "from $base · $files file$([ "$files" = 1 ] || print s) · $commits commit$([ "$commits" = 1 ] || print s)"
 }
@@ -142,6 +145,25 @@ copy_included() {
     mkdir -p "$dir/${f:h}"
     cp -p "$repo/$f" "$dir/$f"
   done
+}
+
+# The included files (copy_included) of worktree $2 that differ from repo $1's, or
+# that it doesn't have: they're gitignored, so git status never shows them, but
+# closing the worktree deletes them.
+changed_included() {
+  local repo="$1" dir="$2" f
+  [ -f "$repo/.worktreeinclude" ] || return 0
+  git -C "$dir" ls-files -z --others --ignored --exclude-from="$repo/.worktreeinclude" 2>/dev/null |
+    git -C "$dir" check-ignore -z --stdin 2>/dev/null | while IFS= read -r -d '' f; do
+    cmp -s -- "$dir/$f" "$repo/$f" || print -r -- "$f"
+  done
+}
+
+# What closing worktree $2 (of repo $1) would throw away, as git status --short
+# shows it; included files that changed are "!!".
+changes() {
+  git -C "$2" status --short 2>/dev/null
+  changed_included "$1" "$2" | sed 's/^/!! /'
 }
 
 new() {
@@ -274,11 +296,11 @@ close() {
   [ -n "$row" ] || die "no worktree $s in $p"
   branch="$(field "$row" 2)"; dir="$(field "$row" 3)"; main="$(field "$row" 4)"; base="$(field "$row" 5)"
   local dirty="" keep=""
-  [ -n "$(git -C "$dir" status --porcelain 2>/dev/null)" ] && dirty=1
+  dirty="$(changes "$main" "$dir")"
   if [ -n "$dirty" ] && [[ "$force" != yes* ]]; then
     [ -t 0 ] || return 2
     print -r -- "$branch has changes that aren't committed:"
-    git -C "$dir" status --short | head -20
+    print -r -- "$dirty" | head -20
     print -rn -- "Throw them away and close it? (y/N) "
     read -r answer
     [[ "$answer" == [yY]* ]] || return 0
@@ -408,6 +430,9 @@ fi
 project="" agent="" session="" popup="" args=()
 while [ $# -gt 0 ]; do
   case "$1" in
+    -h | --help) # agvim worktree new -h: help, not a branch called -h
+      sed -n '2,13p' "${0:A}" | sed 's/^# \{0,1\}//'
+      exit 0 ;;
     -p | -P | --agent) [ $# -ge 2 ] || die "$1 needs a value"
       case "$1" in
         -p) project="$2" ;;
@@ -480,7 +505,7 @@ case "$cmd" in
       c*)
         # Merged and clean closes at once; anything to decide opens a popup to ask.
         row="$(row_of "$p" "$s")"
-        if [ -z "$(git -C "$(field "$row" 3)" status --porcelain 2>/dev/null)" ] && merged "$(field "$row" 4)" "$(field "$row" 2)" "$(field "$row" 5)"; then
+        if [ -z "$(changes "$(field "$row" 4)" "$(field "$row" 3)")" ] && merged "$(field "$row" 4)" "$(field "$row" 2)" "$(field "$row" 5)"; then
           close "$p" "$s" yes
         else
           bar display-popup -c "$client" -E -w 70% -h 50% "env -u TMUX ~/.local/bin/agvim _worktree close-ask ${(q)p} ${(q)s}"

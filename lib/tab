@@ -75,11 +75,12 @@ close() {
   [ -n "$name" ] || return 0
   # A project's other folder: closing its tab takes the folder out of the project.
   if [ "$(tmux display -p -t "$2" '#{@folder_tab}')" = 1 ]; then
-    local project folder
+    local project
     project="$(tmux display -p -t "$2" '#{session_name}')"
-    folder="$(tmux display -p -t "$2" '#{@folder}')"
+    # Only the window's id in the command: a folder with a quote would break it.
+    # close-folder reads the project and folder from the tab itself.
     tmux confirm-before -b -t "$1" -p "Close ${name//\#/##} and take it out of ${project//\#/##}? (y/n)" \
-      "run-shell -b \"~/.local/bin/agvim _tab end '$2' >/dev/null 2>&1 ; true\" ; run-shell -b \"~/.local/bin/agvim _project remove '${project//\'/}' '${folder//\'/\'\\\'\'}' >/dev/null 2>&1 ; true\""
+      "run-shell -b \"~/.local/bin/agvim _tab close-folder '$2' >/dev/null 2>&1 ; true\""
     return 0
   fi
   tmux confirm-before -b -t "$1" -p "Close ${name//\#/##}? (y/n)" "run-shell -b \"~/.local/bin/agvim _tab end '$2' >/dev/null 2>&1 ; true\""
@@ -88,6 +89,14 @@ close() {
 case "$1" in
   new) new "$2" ;;
   close) close "$2" "$3" ;;
+  close-folder)
+    # Answered yes to closing a folder's tab (close): the folder goes out of its
+    # project, which also ends the tab (lib/project remove).
+    project="$(tmux display -p -t "$2" '#{session_name}' 2>/dev/null)"
+    folder="$(tmux display -p -t "$2" '#{@folder}' 2>/dev/null)"
+    [ -n "$project" ] && [ -n "$folder" ] && "${0:A:h}/project" remove "$project" "$folder" >/dev/null 2>&1
+    finish "$2" # in case remove didn't find it
+    ;;
   end) shift; finish "$@" ;;
   *)
     sed -n '2,10p' "${0:A}" | sed 's/^# \{0,1\}//'
