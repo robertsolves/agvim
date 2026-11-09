@@ -2,7 +2,7 @@
 # worktree: branches you work on side by side, each in a folder of its own (a git
 # worktree), so agents in different branches never touch each other's files. They
 # are the row under the projects bar: main (the project's own folder), then each
-# worktree; clicking one shows its tabs along the bottom.
+# worktree; clicking one shows its tabs along the bottom, which start with its branch.
 #
 #   worktree new [name] [-p project] [--agent name|none]   make one and show it
 #   worktree list [-p project]                             a project's worktrees
@@ -243,11 +243,16 @@ start_session() {
   [ -n "$row" ] || return 1
   dir="$(field "$row" 3)"; base="$(field "$row" 5)"
   [ -d "$dir" ] || return 1
-  tmux has-session -t "=$s" 2>/dev/null && return 0
-  "$lib/project" start "$s" || return 1
-  tmux set-option -t "=$s:" @parent "$p"
-  # Neovim's Alt-g there shows everything since it branched off (plugins/editor.lua).
-  tmux set-environment -t "=$s:" AGVIM_BASE "$base"
+  if ! tmux has-session -t "=$s" 2>/dev/null; then
+    "$lib/project" start "$s" || return 1
+    tmux set-option -t "=$s:" @parent "$p"
+    # Neovim's Alt-g there shows everything since it branched off (plugins/editor.lua).
+    tmux set-environment -t "=$s:" AGVIM_BASE "$base"
+  fi
+  # Its tabs along the bottom start with its branch (tmux.conf @tab-wt): they're
+  # often named as main's, so this is how you tell them apart.
+  local branch="$(field "$row" 2)"
+  tmux set-option -t "=$s:" @branch "${branch//\#/##}"
 }
 
 # The worktree session that project $1 shows, or stop.

@@ -35,8 +35,9 @@ agvim worktree fix-it -p A --agent none; sleep 1.5
 echo "session: $(tmux has-session -t '=A-wt-fix-it' 2>/dev/null && echo 1 || echo 0) parent=$(tmux show -qv -t '=A-wt-fix-it:' @parent)"
 d=$(cut -f3 $repo/saved-projects/.worktrees/A); echo "folder outside: ${d#$HOME/.local/share/agvim/worktrees/}"
 echo "branch: $(git -C $d branch --show-current)"
-screen | grep -c 'fix-it' | xargs echo "row shows it:"
+screen | sed -n 3p | grep -c 'fix-it' | xargs echo "row shows it:"
 screen | grep -c 'Worktree' | xargs echo "+ Worktree button:"
+screen | tail -1 | grep -c '^  ⎇ fix-it │' | xargs echo "its tabs start with its branch:"
 agvim worktree list -p A | cut -d' ' -f1-3
 (cd $d && print two >> f && git commit -qam two)
 o new-window -d -t 'o:' -n m "env -u TMUX agvim worktree merge -p A; sleep 30"; sleep 1.5
@@ -44,6 +45,7 @@ o capture-pane -p -t 'o:=m' | grep -c 'Merging fix-it into main' | xargs echo "m
 git -C ~/code/a log --oneline | wc -l | tr -d ' ' | xargs echo "commits in main after merge:"
 agvim worktree close fix-it -p A </dev/null >/dev/null 2>&1; sleep .5
 echo "closed: $(tmux has-session -t '=A-wt-fix-it' 2>/dev/null && echo 0 || echo 1) folder gone: $([ -d $d ] && echo 0 || echo 1)"
+screen | tail -1 | grep -c '⎇' | xargs echo "main's tabs have no branch:"
 
 echo "--- send"
 tmux new-window -d -t '=A:' -n claude -c ~/code/a 'claude; true'; tmux set -w -t '=A:=claude' @agent claude; sleep .5
