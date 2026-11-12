@@ -185,6 +185,9 @@ if ! grep -qs -e '# agvim$' -e '\.local/bin' "$HOME/.zshrc"; then
   printf 'export PATH="$PATH:$HOME/.local/bin" # agvim\n' >>"$HOME/.zshrc"
   note "added ~/.local/bin to your PATH in ~/.zshrc"
 fi
+# AgVim's ⌘ keys (⌘3 to tab 3...) in any kitty window showing AgVim: one include
+# line in kitty.conf. The keys act only in windows titled AgVim. uninstall.sh removes it.
+kitty_keys="$("$REPO/lib/kitty-keys" add)" && [ -n "$kitty_keys" ] && note "$kitty_keys"
 
 step "Finder: New AgVim Project and Add to AgVim Project when you right-click a folder"
 rm -rf "$HOME/Library/Services/Open in Neovim.workflow" "$HOME/Library/Services/New Project.workflow" "$HOME/Library/Services/Add to Project.workflow" # earlier versions

@@ -1,0 +1,122 @@
+#!/bin/zsh
+# jump: going to a tab, worktree or project by the number it shows (Ctrl-Space then
+# a number, tmux.conf), and the keys of a double-clicked one (and projects.conf).
+# Numbers count along their row from 1: projects from agvim, worktrees from main.
+#
+#   jump first <tab|project|worktree> <digit> <client>   the first digit (client: of your tmux)
+#   jump go <tab|project|worktree> <number> <client>     go there
+#   jump area [row] <client>                             numbers go to that row (tab,
+#                                                        worktree, project), else the next:
+#                                                        tabs, worktrees, projects (@area)
+#   jump wt <left|right|close|rename> <client>           the worktree shown, double-clicked
+#                                                        (client: of the bar)
+#   jump rename-project <client>                         the project shown, to @rename-to
+#   jump rename-tab <window> <client>                    a tab, to @rename-to of your tmux;
+#                                                        nothing typed keeps its name
+#
+# Run from tmux's run-shell, so it prints nothing and exits 0.
+exec >/dev/null 2>&1
+unset TMUX
+lib="${0:A:h}"
+store="${0:A:h:h}/saved-projects"
+bar() { command tmux -L projects "$@"; }
+
+client="${@[-1]}"
+case "$1" in
+  first | go)
+    # A key of your tmux: the session that client shows, and its project. (Not
+    # display -c: its formats come from the latest session, not the client's.)
+    here="$(tmux list-clients -F '#{client_name}	#{session_name}' | awk -F'\t' -v c="$client" '$1 == c { print $2 }')"
+    p="$(tmux show-options -qv -t "=$here:" @parent)"
+    p="${p:-$here}"
+    ;;
+  *) p="$(bar display -p -c "$client" '#{window_name}')" ;;
+esac
+
+# The session of your tmux shown in project $p's tab of the bar (lib/worktree shown_in).
+shown() {
+  local tty
+  tty="$(bar display -p -t "=projects:=$p" '#{pane_tty}')"
+  [ -n "$tty" ] && tmux list-clients -F '#{client_tty}	#{session_name}' | awk -F'\t' -v t="$tty" '$1 == t { print $2 }'
+}
+
+# How many there are on row $1.
+count() {
+  case "$1" in
+    tab) tmux display -p -t "=$here:" '#{session_windows}' ;;
+    project) bar display -p -t '=projects:' '#{session_windows}' ;;
+    worktree) print $(($(cat "$store/.worktrees/$p" 2>/dev/null | grep -c .) + 1)) ;;
+  esac
+}
+
+go() {
+  local barc
+  case "$1" in
+    tab) tmux select-window -t "=$here:$2" ;;
+    project) bar select-window -t "=projects:$2" ;;
+    worktree)
+      [ "$2" -le "$(count worktree)" ] || return
+      # The bar's client showing this project, for a popup should one be needed.
+      barc="$(bar list-clients -F '#{client_name}	#{window_name}' | awk -F'\t' -v p="$p" '$2 == p { print $1; exit }')"
+      "$lib/worktree" click "$barc" "$p" "w$(($2 - 1))"
+      ;;
+  esac
+}
+
+case "$1" in
+  first)
+    # With ten or more, 1 could be the start of 12: wait as long as tmux waits for
+    # a second digit (repeat-time), and go only if none came.
+    if [ "$(count "$2")" -ge $(($3 * 10)) ]; then
+      sleep $(($(tmux show -gv repeat-time) / 1000.0))
+      [ "$(tmux show -gv @jump)" = "$3" ] || exit 0
+    fi
+    go "$2" "$3"
+    ;;
+  go) go "$2" "$3" ;;
+  area)
+    # Both tmuxes keep it, each lighting the numbers on its rows (tmux.conf @tab-num,
+    # projects.conf @bar-num, lib/worktree render), and draw their bars again now.
+    case "$2" in
+      tab | worktree | project) next="$2" ;;
+      *)
+        case "$(tmux show -gv @area 2>/dev/null)" in
+          worktree) next=project ;;
+          project) next=tab ;;
+          *) next=worktree ;;
+        esac
+        ;;
+    esac
+    tmux set -g @area "$next"
+    bar set -g @area "$next"
+    for c in ${(f)"$(tmux list-clients -F '#{client_name}')"}; do tmux refresh-client -S -t "$c"; done
+    for c in ${(f)"$(bar list-clients -F '#{client_name}')"}; do bar refresh-client -S -t "$c"; done
+    ;;
+  wt)
+    s="$(shown)"
+    if [ -z "$s" ] || [ "$s" = "$p" ]; then
+      bar display -c "$client" "main stays first, and closes with its project"
+      exit 0
+    fi
+    case "$2" in
+      left) "$lib/worktree" move "$p" "$s" -1 ;;
+      right) "$lib/worktree" move "$p" "$s" 1 ;;
+      close)
+        n="$(awk -F'\t' -v s="$s" '$1 == s { print NR }' "$store/.worktrees/$p")"
+        [ -n "$n" ] && "$lib/worktree" click "$client" "$p" "c$n"
+        ;;
+      rename) bar display -c "$client" "A worktree is named by its branch" ;;
+    esac
+    ;;
+  rename-project)
+    new="$(bar show -gv @rename-to)"
+    [ -n "$new" ] && [ "$new" != "$p" ] || exit 0
+    why="$("$lib/project" rename "$p" "$new" 2>&1)" || bar display -c "$client" "${${why#agvim: }//\#/##}"
+    ;;
+  rename-tab)
+    new="$(tmux show -gv @rename-to)"
+    [ -n "$new" ] || exit 0
+    tmux rename-window -t "$2" -- "$new" && tmux set-option -w -t "$2" @named 1
+    ;;
+esac
+exit 0

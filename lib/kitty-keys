@@ -1,0 +1,37 @@
+#!/bin/zsh
+# kitty-keys add|remove: the include line in your kitty.conf for AgVim's ⌘ keys
+# (macos/kitty-keys.conf), so they work in any kitty window showing AgVim, not only
+# the ones AgVim opens. They act only in windows titled AgVim. install.sh adds it,
+# uninstall.sh removes it. A clone that moved gets its line again with the new path.
+repo="${0:A:h:h}"
+conf="${KITTY_CONFIG_DIRECTORY:-$HOME/.config/kitty}/kitty.conf"
+marker="# agvim: its ⌘ keys, in windows titled AgVim (uninstall.sh removes these two lines)"
+line="include $repo/macos/kitty-keys.conf"
+
+# Every line but ours. Written back through the file, not replaced, so a kitty.conf
+# that is a link (to your dotfiles) stays one.
+strip() {
+  local rest
+  rest="$(awk -v m="$marker" '$0 == m || /^include .*\/macos\/kitty-keys\.conf$/ { next } { print }' "$conf")" || return 1
+  print -r -- "$rest" >"$conf"
+}
+
+case "$1" in
+  add)
+    [ -d /Applications/kitty.app ] || [ -d ~/Applications/kitty.app ] || command -v kitty >/dev/null || exit 0
+    grep -qxF -- "$line" "$conf" 2>/dev/null && exit 0
+    mkdir -p "${conf:h}"
+    [ -f "$conf" ] && strip
+    print -r -- $'\n'"$marker"$'\n'"$line" >>"$conf"
+    print -r -- "added AgVim's ⌘ keys to ${conf/#$HOME/~} (one include line)"
+    ;;
+  remove)
+    [ -f "$conf" ] && grep -q '^include .*/macos/kitty-keys\.conf$' "$conf" || exit 0
+    strip
+    print -r -- "removed AgVim's ⌘ keys from ${conf/#$HOME/~}"
+    ;;
+  *)
+    sed -n '2,5p' "${0:A}" | sed 's/^# \{0,1\}//'
+    [ "$1" = -h ] || [ "$1" = --help ]
+    ;;
+esac

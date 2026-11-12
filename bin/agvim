@@ -634,7 +634,7 @@ case "$cmd" in
     print -r -- "version $(git -C "$repo" describe --tags --always 2>/dev/null || print unknown)"
     ;;
   help | -h | --help) help ;;
-  _p | _project | _projects | _open-project | _tab | _gd | _attention | _colours | _worktree | _send | _running | _skills | _init) exec "$lib/${cmd#_}" "$@" ;;
+  _p | _project | _projects | _open-project | _tab | _gd | _attention | _colours | _worktree | _send | _running | _skills | _init | _jump | _kitty-keys) exec "$lib/${cmd#_}" "$@" ;;
   *)
     print -r -- "agvim: no command called $cmd. See agvim help" >&2
     exit 1

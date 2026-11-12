@@ -11,8 +11,8 @@
 #
 # Removes:
 #   - the links in ~/.config/nvim, ~/.tmux.conf and ~/.local/bin (only ones that lead
-#     to this setup), its PATH line in ~/.zshrc, and what earlier versions added to
-#     kitty's config
+#     to this setup), its PATH line in ~/.zshrc, its include line for its ⌘ keys in
+#     kitty.conf, and what earlier versions added to kitty's config
 #   - Finder's right-click menu, the AgVim app and its Desktop icon
 #   - saved projects, ~/.config/agvim, and the tmux plugins and saved
 #     sessions of earlier versions
@@ -145,10 +145,16 @@ fi
 
 step "kitty.conf"
 kitty_conf="$HOME/.config/kitty/kitty.conf"
+kitty_removed=0
 if [ -f "$kitty_conf" ] && grep -qx 'include agent-workspace.conf' "$kitty_conf"; then
   sed -i '' -e '/^# agent-workspace (/d' -e '/^include agent-workspace\.conf$/d' "$kitty_conf"
   note "removed the include. Restart kitty for it to take effect."
-else
+  kitty_removed=1
+fi
+kitty_keys="$("$REPO/lib/kitty-keys" remove)"
+if [ -n "$kitty_keys" ]; then
+  note "$kitty_keys"
+elif [ "$kitty_removed" = 0 ]; then
   note "nothing to remove"
 fi
 

@@ -24,4 +24,4 @@ You're usually running inside the workspace you're changing. Everything the user
 
 ## Keep it portable
 
-It runs on anyone's Mac and in any terminal. No paths, names or settings from one machine, and never edit a terminal's config: `macos/kitty.conf` applies only to the windows AgVim opens.
+It runs on anyone's Mac and in any terminal. No paths, names or settings from one machine, and never edit a terminal's config: `macos/kitty.conf` applies only to the windows AgVim opens. The one exception is the include line for the ⌘ keys (`lib/kitty-keys`, `macos/kitty-keys.conf`), whose keys act only in windows titled AgVim.

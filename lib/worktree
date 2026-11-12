@@ -15,7 +15,7 @@
 # Their folders are in ~/.local/share/agvim/worktrees/<repo>/<name>, outside the
 # repo, so its own tools never see a second copy.
 #
-# From the bar (tmux/projects.conf): new-here, merge-here, click, render.
+# From the bar (tmux/projects.conf): new-here, merge-here, click, move, render.
 lib="${0:A:h}"
 store="${0:A:h:h}/saved-projects"
 home="${XDG_DATA_HOME:-$HOME/.local/share}/agvim/worktrees"
@@ -98,10 +98,17 @@ render() {
   fi
   main_branch="$(git -C "$main_dir" symbolic-ref --short -q HEAD || print main)"
   item() { # range, label, dot, closable, active
-    local style="#[fg=#b4b9c0]" x=""
+    local style="#[fg=#b4b9c0]" x="" ed=""
     [ "$5" = 1 ] && style="#[bg=#34363b,fg=#e6e8eb,bold]"
     [ "$4" = 1 ] && x="#[range=user|c${1#w}]#[fg=#5f646c] 󰅖 #[norange]"
-    out+="#[range=user|$1]$style  $3${style}${2//\#/##} #[norange]${x}#[bg=#202226,fg=#b4b9c0,nobold]"
+    # Double-clicked (lib/jump): a * while its keys move or close it.
+    [ "$4$5" = 11 ] && ed="#{?#{==:#{client_key_table},wt-edit},*,}"
+    # Its number, for Cmd and the number (lib/jump): main is 1. Lit, dark on light,
+    # while numbers go to worktrees (@area); then its own background again.
+    local num=$((${1#w} + 1)) bg="#202226"
+    [ "$5" = 1 ] && bg="#34363b"
+    num="#{?#{==:#{@area},worktree},#[fg=#141416]#[bg=#e6e8eb]$num#[bg=$bg],#[fg=#7f858e]$num}"
+    out+="#[range=user|$1]$style  $num $3${style}${2//\#/##}$ed #[norange]${x}#[bg=#202226,fg=#b4b9c0,nobold]"
   }
   item w0 "$main_branch" "$(dot_of "$p")" 0 "$([ "$shown" = "$p" ] && print 1)"
   local right=""
@@ -512,6 +519,17 @@ case "$cmd" in
         fi
         ;;
     esac
+    exit 0
+    ;;
+  move) # project, session, -1 or 1: moves it along the row, never before main
+    exec >/dev/null 2>&1
+    p="$args[1]" s="$args[2]" by="$args[3]"
+    f="$(list_file "$p")"
+    n="$(rows "$p" | awk -F'\t' -v s="$s" '$1 == s { print NR }')"
+    to=$((n + by)) all="$(rows "$p" | wc -l)"
+    [ -n "$n" ] && [ "$to" -ge 1 ] && [ "$to" -le "$all" ] || exit 0
+    awk -v a="$n" -v b="$to" '{ l[NR] = $0 } END { t = l[a]; l[a] = l[b]; l[b] = t; for (i = 1; i <= NR; i++) print l[i] }' "$f" >"$f.tmp" && mv "$f.tmp" "$f"
+    render "$p"
     exit 0
     ;;
   close-ask)

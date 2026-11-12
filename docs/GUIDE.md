@@ -2,7 +2,7 @@
 
 ## Open it
 
-Click the AgVim icon on your Desktop. It opens AgVim in kitty, set up with its font, colours and keys for those windows only; your own kitty settings stay as they are. To use another terminal: `agvim terminal iTerm`.
+Click the AgVim icon on your Desktop. It opens AgVim in kitty, set up with its font and colours for those windows only; your own kitty settings stay as they are, apart from one line that gives AgVim its ⌘ keys in any kitty window showing it (they do nothing in your other kitty windows; `./uninstall.sh` takes the line out). To use another terminal: `agvim terminal iTerm`.
 
 Or type `agvim` in any terminal. It asks what you want to do.
 
@@ -22,7 +22,7 @@ Or type `agvim` in any terminal. It asks what you want to do.
 
 After a stop, other programs, such as a dev server, come back as a shell, so start them again. Saved shell output can include anything you printed. It stays on your Mac in `saved-projects/.tabs`, readable only by you.
 
-**Tabs you can tell apart**: each tab's name has a colour of its own from the theme, and the icon next to it closes it. Closing a tab or a project stops everything started in it, also what would run on in the background, so nothing keeps working unseen. Right-click a tab to rename it, give it another colour, move it or close it; drag it, or press Alt-Shift-Left / Right, to move it. Projects at the top work the same way.
+**Tabs you can tell apart**: each tab's name has a colour of its own from the theme, and the icon next to it closes it. Closing a tab or a project stops everything started in it, also what would run on in the background, so nothing keeps working unseen. Each one shows its number, to go to it with Cmd and the number (keys below); the numbers of the row Cmd goes to are lit, dark on light, and clicking a tab in a row makes it that row. Right-click a tab to rename it or give it another colour; drag it, or press Alt-Shift-Left / Right, to move it. Projects at the top work the same way. Or double-click a tab, project or worktree: it gets a `*`, and Left / Right move it, Delete closes it (asking first) and r renames it, until you press any other key. A worktree is named by its branch, so it can't be renamed.
 
 **Working with agents**:
 
@@ -40,6 +40,9 @@ After a stop, other programs, such as a dev server, come back as a shell, so sta
 | Key | What it does |
 |---|---|
 | Alt-1..9, `Alt-.`, `Alt-,` | go to a tab, next, previous |
+| Cmd-1..9 | go to the one showing that number on the row whose numbers are lit (the tabs at first); Cmd-1 Cmd-2 quickly for 12. In kitty; in other terminals Ctrl-Space then the number (Ctrl-Space 1 2) |
+| Cmd-0 | light the numbers of the next row: tabs, then worktrees, then projects, then tabs again (Ctrl-Space 0). Clicking a tab, worktree or project lights its row too |
+| Cmd-O / Cmd-B then a number | go to that project / worktree, whatever row is lit (Ctrl-Space o / b then the number) |
 | Alt-t | new shell tab |
 | Alt-Shift-Left / Right | move this tab |
 | Alt-Shift-B | new worktree |
@@ -52,7 +55,7 @@ When a bar has more tabs than fit, it scrolls to keep the current one in view: c
 
 More: [nvim/README.md](../nvim/README.md), and the top of [tmux/tmux.conf](../tmux/tmux.conf).
 
-In AgVim's kitty windows, the **AgVim** menu in the Mac's menu bar has the main actions, Cmd-T opens a shell tab and Cmd-Shift-[ / ] switch projects. Alt keys need the terminal to send Option as Alt, which those windows do. If you type `agvim` in another terminal, turn it on yourself: in iTerm2 under Profiles → Keys → Left Option key → Esc+, in Terminal under Settings → Profiles → Keyboard → Use Option as Meta key.
+In AgVim's kitty windows, the **AgVim** menu in the Mac's menu bar has the main actions. In any kitty window showing AgVim, Cmd-T opens a shell tab, Cmd-Shift-[ / ] switch projects, Cmd and a number go to a tab (Cmd-0 moves the numbers to the worktrees or projects), and Cmd-O / Cmd-B then a number go to a project / worktree; other terminals use Ctrl-Space instead (keys below). Alt keys need the terminal to send Option as Alt, which those windows do. If you type `agvim` in another terminal, turn it on yourself: in iTerm2 under Profiles → Keys → Left Option key → Esc+, in Terminal under Settings → Profiles → Keyboard → Use Option as Meta key.
 
 ## Commands
 
